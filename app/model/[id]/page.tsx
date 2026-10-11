@@ -49,10 +49,9 @@ function ModelDetailContent({
   const resolvedParams = use(params);
   const modelId = decodeURIComponent(resolvedParams.id);
 
-  // 當前登入身分判斷
   const [currentUserRole, setCurrentUserRole] = useState<"model" | "photographer" | "guest">("guest");
 
-  // ==================== 1. 模特基本資料、風格標籤與接案邊界 ====================
+  // ==================== 1. 模特基本資料 ====================
   const [modelCover, setModelCover] = useState(
     "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80"
   );
@@ -64,12 +63,12 @@ function ModelDetailContent({
     height: "165",
     weight: "48",
     hideWeight: false,
+    experienceYears: "3",
     bio: "熱愛日系清新自然光與韓系俐落時裝。注重拍攝氛圍與情緒表達，現場備有防護更衣裝備。",
     styles: ["日系清新", "韓系時裝", "復古底片"],
-    // 接案尺度與邊界守則
-    scales: ["一般時裝", "日系清新", "漢服古風", "商案型錄 (嚴格拒絕私房/泳裝)"],
+    // 直接連接後台「拍攝禁忌與拒絕尺度」的 boundaries
+    boundaries: ["不接私房微醺", "謝絕比基尼泳裝", "禁未經同意肢體接觸"],
     companionPolicy: "可攜伴同行 (親友可全程在場陪同)",
-    safeBoundaries: "恪守零肢體碰觸引導、公共/商業公開場地為主、謝絕密閉私人住宅約拍",
     coopModes: "互惠創作 (TFCD) / 商業有酬皆可",
   });
 
@@ -112,7 +111,6 @@ function ModelDetailContent({
   const [photographerReviews, setPhotographerReviews] = useState<PeerReview[]>(DEFAULT_MODEL_REVIEWS);
 
   useEffect(() => {
-    // 讀取當前使用者身分
     const savedUser = localStorage.getItem("lumina_mock_user");
     if (savedUser) {
       try {
@@ -127,7 +125,7 @@ function ModelDetailContent({
       }
     }
 
-    // 讀取模特後台自訂儲存的設定（風格標籤、尺度、邊界、社群等）
+    // 讀取後台儲存之模特設定（包含 boundaries 禁忌尺度）
     const savedModel = localStorage.getItem("lumina_model_profile_data");
     if (savedModel) {
       try {
@@ -136,18 +134,19 @@ function ModelDetailContent({
         if (parsed.coverPhoto) setModelCover(parsed.coverPhoto);
         if (parsed.coverFocusY !== undefined) setModelFocusY(parsed.coverFocusY);
 
-        // 兼容不同的風格標籤儲存結構
         const activeStyles = parsed.styles || parsed.modelProfile?.styles || [
           "日系清新",
           "韓系時裝",
         ];
 
-        // 兼容尺度與防護邊界設定
-        const activeScales = parsed.scales || parsed.modelProfile?.scales || [
-          "一般時裝",
-          "日系清新",
-          "謝絕私房內衣",
-        ];
+        // 精準抓取後台「拍攝禁忌與拒絕尺度」的 boundaries
+        const activeBoundaries =
+          parsed.boundaries ||
+          parsed.modelProfile?.boundaries || [
+            "不接私房微醺",
+            "謝絕比基尼泳裝",
+            "禁未經同意肢體接觸",
+          ];
 
         setModelInfo((prev) => ({
           ...prev,
@@ -156,17 +155,14 @@ function ModelDetailContent({
           height: parsed.modelProfile?.height || prev.height,
           weight: parsed.modelProfile?.weight || prev.weight,
           hideWeight: parsed.modelProfile?.hideWeight ?? prev.hideWeight,
+          experienceYears: parsed.modelProfile?.experienceYears || prev.experienceYears,
           bio: parsed.modelProfile?.bio || prev.bio,
           styles: Array.isArray(activeStyles) ? activeStyles : [activeStyles],
-          scales: Array.isArray(activeScales) ? activeScales : [activeScales],
+          boundaries: Array.isArray(activeBoundaries) ? activeBoundaries : [activeBoundaries],
           companionPolicy:
             parsed.modelProfile?.companionPolicy ||
             parsed.companionPolicy ||
             prev.companionPolicy,
-          safeBoundaries:
-            parsed.modelProfile?.safeBoundaries ||
-            parsed.safeBoundaries ||
-            prev.safeBoundaries,
           coopModes:
             parsed.modelProfile?.coopModes ||
             parsed.coopModes ||
@@ -181,7 +177,6 @@ function ModelDetailContent({
       }
     }
 
-    // 檢查隱形黑名單
     const savedBlacklist = localStorage.getItem("lumina_model_blacklist");
     if (savedBlacklist) {
       try {
@@ -196,7 +191,6 @@ function ModelDetailContent({
       }
     }
 
-    // 自動帶入攝影師預設提案
     const savedPhoto = localStorage.getItem("lumina_photographer_profile_data");
     if (savedPhoto) {
       try {
@@ -213,7 +207,6 @@ function ModelDetailContent({
       }
     }
 
-    // 載入同行評價並去重
     const savedReviews = localStorage.getItem("lumina_peer_reviews");
     if (savedReviews) {
       try {
@@ -279,7 +272,6 @@ function ModelDetailContent({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* ==================== 左側：模特封面、資料、風格標籤與接案邊界 ==================== */}
           <section className="bg-[#fbfaf8] p-5 rounded-2xl border border-stone-200/90 h-fit space-y-5 shadow-sm">
-            {/* 1:1 封面照片 (套用自訂對焦點) */}
             <div className="w-full aspect-square rounded-xl overflow-hidden relative border border-stone-300 bg-stone-200 shadow-xs">
               <img
                 src={modelCover}
@@ -290,9 +282,11 @@ function ModelDetailContent({
               <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/75 backdrop-blur-md text-white rounded text-[10px] font-bold">
                 {modelInfo.companionPolicy}
               </span>
+              <span className="absolute top-2 right-2 px-2 py-0.5 bg-indigo-600/85 backdrop-blur-md text-white rounded text-[10px] font-bold">
+                資歷 {modelInfo.experienceYears} 年
+              </span>
             </div>
 
-            {/* 模特基本名片 */}
             <div>
               <div className="flex justify-between items-baseline">
                 <h2 className="text-xl font-bold text-stone-900">{modelInfo.name}</h2>
@@ -300,9 +294,15 @@ function ModelDetailContent({
                   {modelInfo.height} cm / {modelInfo.hideWeight ? "🔒 保密" : `${modelInfo.weight} kg`}
                 </span>
               </div>
-              <p className="text-xs text-stone-500 font-medium mt-0.5">{modelInfo.city}</p>
+              
+              <div className="flex justify-between items-center text-xs text-stone-500 font-medium mt-1">
+                <span>{modelInfo.city}</span>
+                <span className="text-indigo-700 font-bold bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded text-[11px]">
+                  接案年資：{modelInfo.experienceYears} 年
+                </span>
+              </div>
 
-              {/* 風格標籤（完整展示設定好的標籤） */}
+              {/* 風格標籤 */}
               <div className="mt-3">
                 <span className="text-[11px] font-bold text-stone-700 block mb-1">
                   ✨ 擅長拍攝風格標籤：
@@ -327,39 +327,44 @@ function ModelDetailContent({
               )}
             </div>
 
-            {/* ==================== 接案尺度與邊界規範 (清晰呈現) ==================== */}
+            {/* ==================== 連接模特後台之「拍攝禁忌與拒絕尺度 (boundaries)」 ==================== */}
             <div className="pt-3 border-t border-stone-300 space-y-3">
               <h4 className="text-xs font-bold text-stone-900 flex items-center gap-1">
                 <span>🛡️</span>
-                <span>接案邊界與安全守則</span>
+                <span>接案尺度與安全邊界</span>
               </h4>
 
-              <div className="bg-[#f5f3ef] border border-stone-300 rounded-xl p-3 space-y-2 text-xs">
+              <div className="bg-[#f5f3ef] border border-stone-300 rounded-xl p-3 space-y-2.5 text-xs">
                 <div>
-                  <span className="font-bold text-stone-800 block mb-1">📌 接案尺度限制：</span>
-                  <div className="flex flex-wrap gap-1">
-                    {modelInfo.scales.map((scaleItem) => (
-                      <span
-                        key={scaleItem}
-                        className="px-2 py-0.5 bg-rose-50 text-rose-800 border border-rose-200 rounded text-[11px] font-semibold"
-                      >
-                        {scaleItem}
+                  <span className="font-bold text-rose-900 block mb-1.5 flex items-center gap-1">
+                    <span>🔴</span>
+                    <span>拍攝禁忌與拒絕尺度 ：</span>
+                  </span>
+                  
+                  {/* 直接讀取並渲染後台設定的 boundaries 陣列標籤 */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {modelInfo.boundaries && modelInfo.boundaries.length > 0 ? (
+                      modelInfo.boundaries.map((boundaryTag) => (
+                        <span
+                          key={boundaryTag}
+                          className="px-2.5 py-1 bg-rose-50 text-rose-800 border border-rose-300 rounded-lg text-[11px] font-bold shadow-2xs flex items-center gap-1"
+                        >
+                          <span>✕</span>
+                          <span>{boundaryTag}</span>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[11px] text-stone-500 font-medium">
+                        尚無特殊尺度禁忌限制
                       </span>
-                    ))}
+                    )}
                   </div>
                 </div>
 
-                <div className="pt-1.5 border-t border-stone-200">
+                <div className="pt-2 border-t border-stone-200">
                   <span className="font-bold text-stone-800 block">👥 攜伴約拍政策：</span>
                   <p className="text-stone-700 font-medium text-[11px] mt-0.5">
                     {modelInfo.companionPolicy}
-                  </p>
-                </div>
-
-                <div className="pt-1.5 border-t border-stone-200">
-                  <span className="font-bold text-stone-800 block">🚫 防護邊界底線：</span>
-                  <p className="text-stone-700 font-medium text-[11px] mt-0.5 leading-relaxed">
-                    {modelInfo.safeBoundaries}
                   </p>
                 </div>
               </div>

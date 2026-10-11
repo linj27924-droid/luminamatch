@@ -55,14 +55,17 @@ export default function ModelDashboardPage() {
   const [templateContractBody, setTemplateContractBody] = useState(
     `【第一條：作品交付與肖像著作權】
 1. 甲方應於拍攝結束後 14 日內交付至少 10 張精修高畫質成品予乙方。
+
 2. 本次拍攝照片僅供雙方非商業個人作品集展示，未經書面同意不得轉售圖庫或商業廣告使用。
 
 【第二條：人身安全界線與現場規範】
 1. 雙方應嚴格遵守約定之風格，現場嚴禁要求非約定尺度或暴露服裝。
+
 2. 拍攝過程嚴禁非必要肢體接觸，動作引導應以口頭或示範為主。
 
 【第三條：放鳥 (No-Show) 與爽約賠償規範】
 1. 攝影師放鳥未到：須補償模特車馬妝造損失 NT$ 1,500 元（棚費全額由攝影自負），平台扣信用分 30 分。
+
 2. 模特放鳥未到：全額退還預付款並補償攝影師已預付棚費（憑發票實報實銷上限 NT$ 3,000 元），平台扣信用分 30 分。
 3. 臨時取消：72 小時前免責取消；24 小時內臨時取消依賠償標準 50% 計算。`
   );
@@ -134,7 +137,7 @@ export default function ModelDashboardPage() {
       style: "日系膠卷復古時裝",
       coopType: "互惠創作 (TFCD)",
       notes: "已自備反光板與定焦鏡頭，預計交稿 15 張精修調色，無肢體接觸要求。",
-      status: "completed", // 設為 completed 以供測試同業評價功能
+      status: "completed",
     },
     {
       id: "REQ-20261105-02",
@@ -201,6 +204,20 @@ ${templateContractBody}`;
     coopModes: "互惠創作為主、商業案件可議",
   });
 
+  // 新增：接案合作模式選項狀態
+  const [selectedCoopModes, setSelectedCoopModes] = useState<string[]>([
+    "商業有酬",
+    "互惠創作 (TFCD)",
+  ]);
+  const [customCoop1, setCustomCoop1] = useState("");
+  const [customCoop2, setCustomCoop2] = useState("");
+
+  const toggleCoopMode = (mode: string) => {
+    setSelectedCoopModes((prev) =>
+      prev.includes(mode) ? prev.filter((m) => m !== mode) : [...prev, mode]
+    );
+  };
+
   const [socialLinks, setSocialLinks] = useState({
     instagram: "https://instagram.com/hane_model",
     facebook: "https://facebook.com/hane.official",
@@ -251,7 +268,18 @@ ${templateContractBody}`;
         const parsed = JSON.parse(saved);
         if (parsed.coverPhoto) setCoverPhoto(parsed.coverPhoto);
         if (parsed.coverFocusY !== undefined) setCoverFocusY(parsed.coverFocusY);
-        if (parsed.modelProfile) setModelProfile(parsed.modelProfile);
+        if (parsed.modelProfile) {
+          setModelProfile(parsed.modelProfile);
+          if (parsed.modelProfile.selectedCoopModes) {
+            setSelectedCoopModes(parsed.modelProfile.selectedCoopModes);
+          }
+          if (parsed.modelProfile.customCoop1 !== undefined) {
+            setCustomCoop1(parsed.modelProfile.customCoop1);
+          }
+          if (parsed.modelProfile.customCoop2 !== undefined) {
+            setCustomCoop2(parsed.modelProfile.customCoop2);
+          }
+        }
         if (parsed.socialLinks) setSocialLinks(parsed.socialLinks);
         if (parsed.styles) setStyles(parsed.styles);
         if (parsed.boundaries) setBoundaries(parsed.boundaries);
@@ -314,20 +342,55 @@ ${templateContractBody}`;
 
   const handleRemoveBoundary = (tag: string) => setBoundaries(boundaries.filter((b) => b !== tag));
 
+  // 儲存所有個人設定（同步更新頂部 Navbar 名稱與大廳標籤）
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 整合所有接案標籤（主流 + 2 個自訂）供大廳直接顯示
+    const allCoopModes = [...selectedCoopModes];
+    if (customCoop1.trim()) allCoopModes.push(customCoop1.trim());
+    if (customCoop2.trim()) allCoopModes.push(customCoop2.trim());
+
+    const updatedProfile = {
+      ...modelProfile,
+      selectedCoopModes,
+      customCoop1,
+      customCoop2,
+      allCoopModes,
+    };
+
     const dataToSave = {
       coverPhoto,
       coverFocusY,
-      modelProfile,
+      modelProfile: updatedProfile,
       socialLinks,
       styles,
       boundaries,
       customStatusList,
       scheduleData,
     };
+
+    // 1. 存入模特個人檔案庫
     localStorage.setItem("lumina_model_profile_data", JSON.stringify(dataToSave));
-    alert("✅ 個人簡介、封面位置、風格標籤與排程設定已成功儲存！");
+
+    // 2. 同步更新當前登入者名稱快取 (讓頂部 Navbar 立即變更)
+    const savedUser = localStorage.getItem("lumina_mock_user");
+    if (savedUser) {
+      try {
+        const u = JSON.parse(savedUser);
+        if (u.role === "model") {
+          u.name = modelProfile.name;
+          localStorage.setItem("lumina_mock_user", JSON.stringify(u));
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // 3. 派發事件讓頂部 Navbar 重新渲染
+    window.dispatchEvent(new Event("storage"));
+
+    alert("✅ 個人簡介、封面位置、接案選項、風格標籤與排程設定已成功儲存！頂部名稱與大廳標籤已同步更新。");
   };
 
   // ==================== 5. 檔期排程日曆狀態 ====================
@@ -449,14 +512,12 @@ ${templateContractBody}`;
     setSelectedReqForDecline(null);
   };
 
-  // 快捷：謝絕並靜默封鎖此人 (方案 A + 方案 B)
   const handleDeclineAndQuietBlock = (req: BookingRequest) => {
     const isConfirm = window.confirm(
       `確定要謝絕並「靜默封鎖」【${req.photographerName}】嗎？\n\n系統將自動執行：\n1. 向對方送出禮貌婉拒\n2. 對方未來造訪您的主頁時，日曆將偽裝全滿（灰色不可點）\n3. 對方若強行送出約拍將自動被幽靈過濾，不干擾您的正常接案！`
     );
     if (!isConfirm) return;
 
-    // 1. 謝絕邀約
     setBookingRequests((prev) =>
       prev.map((r) =>
         r.id === req.id
@@ -465,7 +526,6 @@ ${templateContractBody}`;
       )
     );
 
-    // 2. 加入隱形黑名單
     const exists = blacklist.some((b) => b.name === req.photographerName);
     if (!exists) {
       const item: BlacklistedItem = {
@@ -482,7 +542,6 @@ ${templateContractBody}`;
     alert(`🛡️ 已成功執行！已禮貌謝絕並將【${req.photographerName}】移入隱形防護名單。`);
   };
 
-  // 送出對攝影師的同行評價 (限模特同行可讀)
   const handleSubmitPhotographerReview = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reviewingBookingReq || !photographerReviewContent.trim()) return;
@@ -744,6 +803,70 @@ ${templateContractBody}`;
                     onChange={(e) => setModelProfile({ ...modelProfile, measurements: e.target.value })}
                     className="w-full text-sm bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
                   />
+                </div>
+              </div>
+
+              {/* ==================== 新增：接案合作模式選項 (主流 4 項 + 自訂 2 項空白) ==================== */}
+              <div className="pt-3 border-t border-stone-200 space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-stone-800">
+                    💰 接案合作模式 (會同步顯示於大廳下方標籤)
+                  </label>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    勾選您接受的合作形式，或於下方自訂新增專屬合作條款：
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[
+                    { id: "商業有酬", label: "商業有酬 (有預算商案優先)" },
+                    { id: "互惠創作 (TFCD)", label: "互惠創作 (TFCD 雙向互免)" },
+                    { id: "車馬費補貼", label: "車馬費 / 梳化治裝補貼" },
+                    { id: "棚費平攤", label: "租棚費 / 場地門票雙方平攤" },
+                  ].map((item) => {
+                    const isChecked = selectedCoopModes.includes(item.id);
+                    return (
+                      <label
+                        key={item.id}
+                        onClick={() => toggleCoopMode(item.id)}
+                        className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition ${
+                          isChecked
+                            ? "bg-amber-50 border-amber-300 text-amber-900 font-bold"
+                            : "bg-[#f5f3ef] border-stone-300 text-stone-700 hover:bg-[#eae7e1] font-medium"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}}
+                          className="w-3.5 h-3.5 text-amber-600 rounded"
+                        />
+                        <span className="text-xs">{item.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  <span className="text-[11px] font-bold text-stone-700 block">
+                    ✦ 自訂接案模式（開放 2 組空白自填）：
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={customCoop1}
+                      onChange={(e) => setCustomCoop1(e.target.value)}
+                      placeholder="自訂模式 1 (例：品牌贊助置換、分潤合作)"
+                      className="w-full text-xs bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
+                    />
+                    <input
+                      type="text"
+                      value={customCoop2}
+                      onChange={(e) => setCustomCoop2(e.target.value)}
+                      placeholder="自訂模式 2 (例：需提前支付 30% 定金)"
+                      className="w-full text-xs bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1193,7 +1316,6 @@ ${templateContractBody}`;
               </div>
             </div>
 
-            {/* 手動新增黑名單表單 */}
             <form onSubmit={handleAddBlacklist} className="bg-[#f5f3ef] p-4 rounded-xl border border-stone-300 space-y-3">
               <span className="text-xs font-bold text-stone-800 block">手動加入防護名單：</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1223,7 +1345,6 @@ ${templateContractBody}`;
               </div>
             </form>
 
-            {/* 現有名單列表 */}
             <div className="space-y-2">
               <span className="text-xs font-bold text-stone-700 block">目前防護對象清單 ({blacklist.length})：</span>
               {blacklist.length === 0 ? (
