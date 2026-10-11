@@ -49,23 +49,28 @@ function ModelDetailContent({
   const resolvedParams = use(params);
   const modelId = decodeURIComponent(resolvedParams.id);
 
-  // 修正：初始身分預設為 guest，避免預設為 photographer 造成誤解鎖
+  // 當前登入身分判斷
   const [currentUserRole, setCurrentUserRole] = useState<"model" | "photographer" | "guest">("guest");
 
-  // ==================== 1. 模特資料與 5 組社群連結 ====================
+  // ==================== 1. 模特基本資料、風格標籤與接案邊界 ====================
   const [modelCover, setModelCover] = useState(
     "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80"
   );
   const [modelFocusY, setModelFocusY] = useState(20);
+
   const [modelInfo, setModelInfo] = useState({
     name: "羽晴 (Hane)",
     city: "台北 / 新北",
     height: "165",
     weight: "48",
     hideWeight: false,
-    companionPolicy: "可攜伴 (親友同行)",
     bio: "熱愛日系清新自然光與韓系俐落時裝。注重拍攝氛圍與情緒表達，現場備有防護更衣裝備。",
-    styles: ["日系清新", "韓系時裝"],
+    styles: ["日系清新", "韓系時裝", "復古底片"],
+    // 接案尺度與邊界守則
+    scales: ["一般時裝", "日系清新", "漢服古風", "商案型錄 (嚴格拒絕私房/泳裝)"],
+    companionPolicy: "可攜伴同行 (親友可全程在場陪同)",
+    safeBoundaries: "恪守零肢體碰觸引導、公共/商業公開場地為主、謝絕密閉私人住宅約拍",
+    coopModes: "互惠創作 (TFCD) / 商業有酬皆可",
   });
 
   const [socialLinks, setSocialLinks] = useState({
@@ -88,6 +93,7 @@ function ModelDetailContent({
     "2026-10-20": "private_booked",
     "2026-10-25": "studio_shoot",
   });
+
   const [customStatusList, setCustomStatusList] = useState([
     { id: "available", name: "可預約", isBookable: true },
     { id: "off", name: "休假", isBookable: false },
@@ -97,7 +103,7 @@ function ModelDetailContent({
 
   const [isQuietBlocked, setIsQuietBlocked] = useState(false);
 
-  // ==================== 3. 約拍表單欄位狀態 ====================
+  // ==================== 3. 攝影師約拍表單欄位 ====================
   const [style, setStyle] = useState("");
   const [location, setLocation] = useState("");
   const [coopType, setCoopType] = useState("互惠創作 (TFCD)");
@@ -105,8 +111,8 @@ function ModelDetailContent({
 
   const [photographerReviews, setPhotographerReviews] = useState<PeerReview[]>(DEFAULT_MODEL_REVIEWS);
 
-  // 嚴謹讀取當前登入者身分
   useEffect(() => {
+    // 讀取當前使用者身分
     const savedUser = localStorage.getItem("lumina_mock_user");
     if (savedUser) {
       try {
@@ -118,52 +124,79 @@ function ModelDetailContent({
         }
       } catch (e) {
         console.error(e);
-        setCurrentUserRole("guest");
       }
-    } else {
-      setCurrentUserRole("guest");
     }
 
-    // 讀取模特自訂檔案
+    // 讀取模特後台自訂儲存的設定（風格標籤、尺度、邊界、社群等）
     const savedModel = localStorage.getItem("lumina_model_profile_data");
     if (savedModel) {
       try {
         const parsed = JSON.parse(savedModel);
+
         if (parsed.coverPhoto) setModelCover(parsed.coverPhoto);
         if (parsed.coverFocusY !== undefined) setModelFocusY(parsed.coverFocusY);
-        if (parsed.modelProfile) {
-          setModelInfo({
-            name: parsed.modelProfile.name || "羽晴 (Hane)",
-            city: parsed.modelProfile.city || "台北 / 新北",
-            height: parsed.modelProfile.height || "165",
-            weight: parsed.modelProfile.weight || "48",
-            hideWeight: parsed.modelProfile.hideWeight ?? false,
-            companionPolicy: parsed.modelProfile.companionPolicy || "可攜伴 (親友同行)",
-            bio: parsed.modelProfile.bio || "",
-            styles: parsed.styles || ["日系清新", "韓系時裝"],
-          });
-        }
+
+        // 兼容不同的風格標籤儲存結構
+        const activeStyles = parsed.styles || parsed.modelProfile?.styles || [
+          "日系清新",
+          "韓系時裝",
+        ];
+
+        // 兼容尺度與防護邊界設定
+        const activeScales = parsed.scales || parsed.modelProfile?.scales || [
+          "一般時裝",
+          "日系清新",
+          "謝絕私房內衣",
+        ];
+
+        setModelInfo((prev) => ({
+          ...prev,
+          name: parsed.modelProfile?.name || prev.name,
+          city: parsed.modelProfile?.city || prev.city,
+          height: parsed.modelProfile?.height || prev.height,
+          weight: parsed.modelProfile?.weight || prev.weight,
+          hideWeight: parsed.modelProfile?.hideWeight ?? prev.hideWeight,
+          bio: parsed.modelProfile?.bio || prev.bio,
+          styles: Array.isArray(activeStyles) ? activeStyles : [activeStyles],
+          scales: Array.isArray(activeScales) ? activeScales : [activeScales],
+          companionPolicy:
+            parsed.modelProfile?.companionPolicy ||
+            parsed.companionPolicy ||
+            prev.companionPolicy,
+          safeBoundaries:
+            parsed.modelProfile?.safeBoundaries ||
+            parsed.safeBoundaries ||
+            prev.safeBoundaries,
+          coopModes:
+            parsed.modelProfile?.coopModes ||
+            parsed.coopModes ||
+            prev.coopModes,
+        }));
+
         if (parsed.socialLinks) setSocialLinks(parsed.socialLinks);
         if (parsed.scheduleData) setModelScheduleData(parsed.scheduleData);
         if (parsed.customStatusList) setCustomStatusList(parsed.customStatusList);
       } catch (e) {
-        console.error("載入模特資料失敗", e);
+        console.error("載入模特設定失敗", e);
       }
     }
 
-    // 檢查黑名單
+    // 檢查隱形黑名單
     const savedBlacklist = localStorage.getItem("lumina_model_blacklist");
     if (savedBlacklist) {
       try {
         const bl = JSON.parse(savedBlacklist);
-        const isBlocked = bl.some((item: { name: string }) => item.name.includes("Alan Chen") || item.name.includes("陳攝影"));
+        const isBlocked = bl.some(
+          (item: { name: string }) =>
+            item.name.includes("Alan Chen") || item.name.includes("陳攝影")
+        );
         if (isBlocked) setIsQuietBlocked(true);
       } catch (e) {
         console.error(e);
       }
     }
 
-    // 讀取攝影師預設範本
+    // 自動帶入攝影師預設提案
     const savedPhoto = localStorage.getItem("lumina_photographer_profile_data");
     if (savedPhoto) {
       try {
@@ -180,12 +213,14 @@ function ModelDetailContent({
       }
     }
 
-    // 讀取評價並去重
+    // 載入同行評價並去重
     const savedReviews = localStorage.getItem("lumina_peer_reviews");
     if (savedReviews) {
       try {
         const parsedR: PeerReview[] = JSON.parse(savedReviews);
-        const filtered = parsedR.filter((r) => r.targetId === modelId && r.targetType === "model");
+        const filtered = parsedR.filter(
+          (r) => r.targetId === modelId && r.targetType === "model"
+        );
         setPhotographerReviews(() => {
           const map = new Map<string, PeerReview>();
           DEFAULT_MODEL_REVIEWS.forEach((r) => map.set(r.id, r));
@@ -198,8 +233,14 @@ function ModelDetailContent({
     }
   }, [modelId]);
 
-  const daysInMonth = useMemo(() => new Date(viewYear, viewMonth, 0).getDate(), [viewYear, viewMonth]);
-  const firstDay = useMemo(() => new Date(viewYear, viewMonth - 1, 1).getDay(), [viewYear, viewMonth]);
+  const daysInMonth = useMemo(
+    () => new Date(viewYear, viewMonth, 0).getDate(),
+    [viewYear, viewMonth]
+  );
+  const firstDay = useMemo(
+    () => new Date(viewYear, viewMonth - 1, 1).getDay(),
+    [viewYear, viewMonth]
+  );
 
   const handleBooking = (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,7 +248,9 @@ function ModelDetailContent({
       alert("請先於上方日曆選取可預約的日期！");
       return;
     }
-    alert(`🎉 約拍提案已正式送出！\n\n約定日期：${selectedDate}\n預約風格：${style}\n預計地點：${location}\n\n已自動套用您的攝影提案範本，模特審核同意後將產生電子存證協議！`);
+    alert(
+      `🎉 約拍提案已正式送出！\n\n約定日期：${selectedDate}\n預約風格：${style}\n預計地點：${location}\n\n已自動套用您的攝影提案範本，模特審核同意後將產生電子存證協議！`
+    );
   };
 
   return (
@@ -220,15 +263,23 @@ function ModelDetailContent({
           >
             ← 返回探索大廳
           </button>
-          
+
           <span className="text-[11px] font-bold px-2.5 py-1 bg-stone-200/80 rounded-lg text-stone-700">
-            當前造訪身分：<strong>{currentUserRole === "model" ? "👩‍🦰 模特" : currentUserRole === "photographer" ? "📸 攝影師" : "訪客"}</strong>
+            當前造訪身分：
+            <strong>
+              {currentUserRole === "model"
+                ? "👩‍🦰 模特"
+                : currentUserRole === "photographer"
+                ? "📸 攝影師"
+                : "訪客"}
+            </strong>
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* 左側：模特封面照片、個人簡介與 5 組社群 */}
+          {/* ==================== 左側：模特封面、資料、風格標籤與接案邊界 ==================== */}
           <section className="bg-[#fbfaf8] p-5 rounded-2xl border border-stone-200/90 h-fit space-y-5 shadow-sm">
+            {/* 1:1 封面照片 (套用自訂對焦點) */}
             <div className="w-full aspect-square rounded-xl overflow-hidden relative border border-stone-300 bg-stone-200 shadow-xs">
               <img
                 src={modelCover}
@@ -241,6 +292,7 @@ function ModelDetailContent({
               </span>
             </div>
 
+            {/* 模特基本名片 */}
             <div>
               <div className="flex justify-between items-baseline">
                 <h2 className="text-xl font-bold text-stone-900">{modelInfo.name}</h2>
@@ -250,14 +302,24 @@ function ModelDetailContent({
               </div>
               <p className="text-xs text-stone-500 font-medium mt-0.5">{modelInfo.city}</p>
 
-              <div className="flex flex-wrap gap-1 mt-2.5">
-                {modelInfo.styles.map((s) => (
-                  <span key={s} className="px-2 py-0.5 bg-indigo-50 text-indigo-800 rounded text-[10px] font-bold border border-indigo-200">
-                    #{s}
-                  </span>
-                ))}
+              {/* 風格標籤（完整展示設定好的標籤） */}
+              <div className="mt-3">
+                <span className="text-[11px] font-bold text-stone-700 block mb-1">
+                  ✨ 擅長拍攝風格標籤：
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {modelInfo.styles.map((s) => (
+                    <span
+                      key={s}
+                      className="px-2.5 py-1 bg-indigo-50 text-indigo-800 rounded-lg text-xs font-bold border border-indigo-200 shadow-2xs"
+                    >
+                      #{s}
+                    </span>
+                  ))}
+                </div>
               </div>
 
+              {/* 個人簡介 Bio */}
               {modelInfo.bio && (
                 <p className="text-xs text-stone-700 mt-3 leading-relaxed bg-[#f5f3ef] p-3 rounded-xl border border-stone-300 font-medium">
                   {modelInfo.bio}
@@ -265,6 +327,45 @@ function ModelDetailContent({
               )}
             </div>
 
+            {/* ==================== 接案尺度與邊界規範 (清晰呈現) ==================== */}
+            <div className="pt-3 border-t border-stone-300 space-y-3">
+              <h4 className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                <span>🛡️</span>
+                <span>接案邊界與安全守則</span>
+              </h4>
+
+              <div className="bg-[#f5f3ef] border border-stone-300 rounded-xl p-3 space-y-2 text-xs">
+                <div>
+                  <span className="font-bold text-stone-800 block mb-1">📌 接案尺度限制：</span>
+                  <div className="flex flex-wrap gap-1">
+                    {modelInfo.scales.map((scaleItem) => (
+                      <span
+                        key={scaleItem}
+                        className="px-2 py-0.5 bg-rose-50 text-rose-800 border border-rose-200 rounded text-[11px] font-semibold"
+                      >
+                        {scaleItem}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-1.5 border-t border-stone-200">
+                  <span className="font-bold text-stone-800 block">👥 攜伴約拍政策：</span>
+                  <p className="text-stone-700 font-medium text-[11px] mt-0.5">
+                    {modelInfo.companionPolicy}
+                  </p>
+                </div>
+
+                <div className="pt-1.5 border-t border-stone-200">
+                  <span className="font-bold text-stone-800 block">🚫 防護邊界底線：</span>
+                  <p className="text-stone-700 font-medium text-[11px] mt-0.5 leading-relaxed">
+                    {modelInfo.safeBoundaries}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 5 組公開社群與個人作品集 */}
             <div className="pt-3 border-t border-stone-300 space-y-2">
               <h4 className="text-xs font-bold text-stone-800">公開社群與個人作品集</h4>
               <div className="flex flex-col gap-1.5 text-xs">
@@ -327,7 +428,7 @@ function ModelDetailContent({
             </div>
           </section>
 
-          {/* 右側：連動檔期日曆與高對比度約拍表單 */}
+          {/* ==================== 右側：連動檔期日曆與約拍表單 ==================== */}
           <section className="md:col-span-2 space-y-6">
             <div className="bg-[#fbfaf8] p-6 rounded-2xl border border-stone-200/90 space-y-4 shadow-sm">
               <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-stone-200">
@@ -359,8 +460,10 @@ function ModelDetailContent({
 
               {/* 日曆網格 */}
               <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
-                {["週日","週一","週二","週三","週四","週五","週六"].map((d) => (
-                  <div key={d} className="font-bold text-stone-600 py-1">{d}</div>
+                {["週日", "週一", "週二", "週三", "週四", "週五", "週六"].map((d) => (
+                  <div key={d} className="font-bold text-stone-600 py-1">
+                    {d}
+                  </div>
                 ))}
 
                 {Array.from({ length: firstDay }).map((_, i) => (
@@ -369,8 +472,10 @@ function ModelDetailContent({
 
                 {Array.from({ length: daysInMonth }).map((_, i) => {
                   const day = i + 1;
-                  const dateKey = `${viewYear}-${String(viewMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                  
+                  const dateKey = `${viewYear}-${String(viewMonth).padStart(2, "0")}-${String(
+                    day
+                  ).padStart(2, "0")}`;
+
                   const statusId = modelScheduleData[dateKey] || "available";
                   const statusDef = customStatusList.find((s) => s.id === statusId) || {
                     id: statusId,
@@ -412,15 +517,22 @@ function ModelDetailContent({
             </div>
 
             {/* 高對比度約拍表單 */}
-            <form onSubmit={handleBooking} className="bg-[#fbfaf8] p-6 rounded-2xl border border-stone-300 shadow-sm space-y-4">
+            <form
+              onSubmit={handleBooking}
+              className="bg-[#fbfaf8] p-6 rounded-2xl border border-stone-300 shadow-sm space-y-4"
+            >
               <div className="flex justify-between items-center border-b border-stone-200 pb-2">
                 <div>
                   <h4 className="font-bold text-sm text-stone-900">發起拍攝合作協議</h4>
                   <p className="text-xs font-semibold mt-0.5">
                     {selectedDate ? (
-                      <span className="text-indigo-700 font-bold">✓ 已選定約定日期：{selectedDate}</span>
+                      <span className="text-indigo-700 font-bold">
+                        ✓ 已選定約定日期：{selectedDate}
+                      </span>
                     ) : (
-                      <span className="text-stone-500 font-medium">請先於上方日曆點擊選擇【可預約】的綠色日期</span>
+                      <span className="text-stone-500 font-medium">
+                        請先於上方日曆點擊選擇【可預約】的綠色日期
+                      </span>
                     )}
                   </p>
                 </div>
@@ -497,7 +609,7 @@ function ModelDetailContent({
           </section>
         </div>
 
-        {/* ==================== 底部：攝影同業合作手札 (權限隔離檢查) ==================== */}
+        {/* ==================== 底部：攝影同業合作手札 ==================== */}
         <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
           <div className="flex justify-between items-center border-b border-stone-200 pb-2">
             <div>
@@ -511,30 +623,42 @@ function ModelDetailContent({
                 包含妝容自備完整度、守時紀錄與現場溝通流暢度，僅對攝影同行開放。
               </p>
             </div>
-            <span className="text-xs font-mono text-stone-500 font-bold">共 {photographerReviews.length} 則評價</span>
+            <span className="text-xs font-mono text-stone-500 font-bold">
+              共 {photographerReviews.length} 則評價
+            </span>
           </div>
 
-          {/* 只有攝影師 (role === 'photographer') 才能看到！模特 (role === 'model') 看到的是鎖定畫面 */}
           {currentUserRole !== "photographer" ? (
             <div className="p-8 text-center bg-[#f5f3ef] rounded-xl border border-dashed border-stone-300 space-y-2">
               <div className="text-2xl">🔒</div>
               <h4 className="text-xs font-bold text-stone-800">攝影同行手札加密保護中</h4>
               <p className="text-[11px] text-stone-600 leading-relaxed max-w-sm mx-auto font-medium">
-                本區塊為攝影同行交流與信譽存證專區，僅對已登入且核驗身分為<strong>【攝影師】</strong>之會員開放。<br />
-                當前登入身分：<strong className="text-indigo-700">{currentUserRole === "model" ? "👩‍🦰 模特" : "訪客"}</strong>，您無法查閱同業備忘以確保交流公正性。
+                本區塊為攝影同行交流與信譽存證專區，僅對已登入且核驗身分為
+                <strong>【攝影師】</strong>之會員開放。<br />
+                當前登入身分：
+                <strong className="text-indigo-700">
+                  {currentUserRole === "model" ? "👩‍🦰 模特" : "訪客"}
+                </strong>
+                ，您無法查閱同業備忘以確保交流公正性。
               </p>
             </div>
           ) : (
             <div className="space-y-3">
               {photographerReviews.map((r, idx) => (
-                <div key={`${r.id}-${idx}`} className="p-4 bg-white border border-stone-200 rounded-xl space-y-2 text-xs">
+                <div
+                  key={`${r.id}-${idx}`}
+                  className="p-4 bg-white border border-stone-200 rounded-xl space-y-2 text-xs"
+                >
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-stone-900">{r.authorName}</span>
                     <span className="text-[10px] text-stone-500 font-medium">{r.date}</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {r.tags.map((t) => (
-                      <span key={t} className="px-2 py-0.5 bg-emerald-50 text-emerald-900 rounded text-[10px] font-bold border border-emerald-200">
+                      <span
+                        key={t}
+                        className="px-2 py-0.5 bg-emerald-50 text-emerald-900 rounded text-[10px] font-bold border border-emerald-200"
+                      >
                         #{t}
                       </span>
                     ))}
