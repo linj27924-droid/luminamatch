@@ -105,24 +105,25 @@ export default function ProfileTab({
   return (
     <form onSubmit={handleSaveProfile} className="space-y-6">
       {/* 1:1 封面對焦微調 */}
-      <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-        <div className="border-b border-stone-200 pb-2 flex justify-between items-center">
-          <h3 className="text-sm font-bold text-stone-800">
+      <div className="bg-[#fbfaf8] dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="border-b border-stone-200 dark:border-stone-800 pb-2 flex justify-between items-center">
+          <h3 className="text-sm font-bold text-stone-800 dark:text-stone-100">
             大廳 1:1 正方形封面與位置微調
           </h3>
-          <span className="text-[11px] text-indigo-700 font-semibold bg-indigo-50 px-2 py-0.5 rounded">
+          <span className="text-[11px] text-indigo-700 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded">
             ✦ 方框提示已啟用，避免切到頭部
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 items-center">
           <div className="flex flex-col items-center">
-            <div className="relative w-64 h-64 rounded-2xl overflow-hidden border-4 border-indigo-500/80 shadow-md bg-stone-900">
+            {/* 強制限定尺寸為 max-w-[260px] 與 aspect-square，絕不撐開爆版 */}
+            <div className="relative w-full max-w-[260px] aspect-square rounded-2xl overflow-hidden border-4 border-indigo-500/80 shadow-md bg-stone-900">
               <img
                 src={coverPhoto}
                 alt="封面預覽"
                 style={{ objectPosition: `center ${coverFocusY}%` }}
-                className="w-full h-full object-cover transition-all duration-75"
+                className="w-full h-full object-cover transition-all duration-75 block max-w-full"
               />
               <div className="absolute inset-0 pointer-events-none border border-white/40 flex items-center justify-center">
                 <div className="w-8 h-8 border-2 border-white/70 rounded-full flex items-center justify-center">
@@ -133,17 +134,17 @@ export default function ProfileTab({
                 大廳 1:1 實際呈現效果
               </span>
             </div>
-            <p className="text-[11px] text-stone-500 mt-2 text-center">
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-2 text-center">
               ↑ 此方框即為訪客在大廳第一眼看到的 1:1 完整範圍
             </p>
           </div>
 
-          <div className="space-y-5 bg-[#f5f3ef] p-5 rounded-2xl border border-stone-300/80">
+          <div className="space-y-5 bg-[#f5f3ef] dark:bg-stone-800 p-5 rounded-2xl border border-stone-300/80 dark:border-stone-700">
             <div>
-              <label className="block text-xs font-bold text-stone-800 mb-1">
+              <label className="block text-xs font-bold text-stone-800 dark:text-stone-200 mb-1">
                 上下平移對焦點 (垂直位置)：{coverFocusY}%
               </label>
-              <p className="text-[11px] text-stone-500 mb-3">
+              <p className="text-[11px] text-stone-500 dark:text-stone-400 mb-3">
                 滑動滑桿將視覺中心定在臉部或上半身，防止頭部被切掉：
               </p>
               <input
@@ -152,17 +153,17 @@ export default function ProfileTab({
                 max="100"
                 value={coverFocusY}
                 onChange={(e) => setCoverFocusY(Number(e.target.value))}
-                className="w-full accent-indigo-600 cursor-pointer h-2 bg-stone-300 rounded-lg"
+                className="w-full accent-indigo-600 cursor-pointer h-2 bg-stone-300 dark:bg-stone-700 rounded-lg"
               />
-              <div className="flex justify-between text-[10px] text-stone-500 mt-1 font-semibold">
+              <div className="flex justify-between text-[10px] text-stone-500 dark:text-stone-400 mt-1 font-semibold">
                 <span>頂部 (頭頂/臉部 0%)</span>
                 <span>中間 (50%)</span>
                 <span>底部 (腳部 100%)</span>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-stone-300">
-              <label className="inline-block cursor-pointer px-4 py-2.5 bg-stone-800 hover:bg-stone-900 text-white text-xs font-bold rounded-xl transition shadow-xs">
+            <div className="pt-2 border-t border-stone-300 dark:border-stone-750">
+              <label className="inline-block cursor-pointer px-4 py-2.5 bg-stone-800 dark:bg-stone-900 hover:bg-stone-900 text-white text-xs font-bold rounded-xl transition shadow-xs">
                 📁 更換封面照片檔案
                 <input
                   type="file"
@@ -171,7 +172,7 @@ export default function ProfileTab({
                   className="hidden"
                 />
               </label>
-              <p className="text-[11px] text-stone-400 mt-2">
+              <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-2">
                 支援上傳直式全身照或橫式大景，上傳後即可使用上方滑桿自由調整。
               </p>
             </div>
@@ -179,15 +180,15 @@ export default function ProfileTab({
         </div>
       </div>
 
-      {/* ★ 9 張精選相簿上傳與管理區塊 ★ */}
-      <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-        <div className="border-b border-stone-200 pb-2 flex justify-between items-center">
+      {/* 9 張精選相簿上傳與管理區塊 */}
+      <div className="bg-[#fbfaf8] dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="border-b border-stone-200 dark:border-stone-800 pb-2 flex justify-between items-center">
           <div>
-            <h3 className="text-sm font-bold text-stone-800 flex items-center gap-2">
+            <h3 className="text-sm font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
               <span>📸</span>
               <span>精選外拍作品相簿管理 ({portfolio.length} / 9 張)</span>
             </h3>
-            <p className="text-[11px] text-stone-500 mt-0.5">
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
               顯示於個人主頁「約拍表單」正下方，供攝影師快速欣賞您的代表作
             </p>
           </div>
@@ -205,14 +206,21 @@ export default function ProfileTab({
         </div>
 
         {portfolio.length === 0 ? (
-          <div className="p-8 text-center bg-[#f5f3ef] rounded-xl border border-dashed border-stone-300 text-xs text-stone-400">
+          <div className="p-8 text-center bg-[#f5f3ef] dark:bg-stone-800 rounded-xl border border-dashed border-stone-300 dark:border-stone-700 text-xs text-stone-400">
             目前尚未上傳作品集相片，請點擊右上角「+ 上傳代表作」新增照片（最多 9 張）。
           </div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
             {portfolio.map((img, idx) => (
-              <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-stone-300 group bg-stone-100 shadow-2xs">
-                <img src={img} alt={`作品 ${idx + 1}`} className="w-full h-full object-cover" />
+              <div
+                key={idx}
+                className="relative w-full aspect-square rounded-xl overflow-hidden border border-stone-300 dark:border-stone-700 group bg-stone-100 dark:bg-stone-800 shadow-2xs"
+              >
+                <img
+                  src={img}
+                  alt={`作品 ${idx + 1}`}
+                  className="w-full h-full object-cover block max-w-full"
+                />
                 <button
                   type="button"
                   onClick={() => handleRemovePortfolioImage(idx)}
@@ -231,58 +239,58 @@ export default function ProfileTab({
       </div>
 
       {/* 基本資料與安全隱私 */}
-      <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-5">
-        <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200 pb-2">
+      <div className="bg-[#fbfaf8] dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-6 shadow-sm space-y-5">
+        <h3 className="text-sm font-bold text-stone-800 dark:text-stone-100 border-b border-stone-200 dark:border-stone-800 pb-2">
           基本資料與安全隱私
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">藝名 / 稱呼</label>
+            <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">藝名 / 稱呼</label>
             <input
               type="text"
               value={modelProfile.name}
               onChange={(e) => setModelProfile({ ...modelProfile, name: e.target.value })}
-              className="w-full text-sm bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
+              className="w-full text-sm bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-medium border border-stone-300 dark:border-stone-700 rounded-lg p-2.5 outline-none focus:border-indigo-500"
               required
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">主要接案城市</label>
+            <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">主要接案城市</label>
             <input
               type="text"
               value={modelProfile.city}
               onChange={(e) => setModelProfile({ ...modelProfile, city: e.target.value })}
-              className="w-full text-sm bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
+              className="w-full text-sm bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-medium border border-stone-300 dark:border-stone-700 rounded-lg p-2.5 outline-none focus:border-indigo-500"
               required
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">接案年資 (年)</label>
+            <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">接案年資 (年)</label>
             <input
               type="text"
               value={modelProfile.experienceYears}
               onChange={(e) => setModelProfile({ ...modelProfile, experienceYears: e.target.value })}
-              className="w-full text-sm bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
+              className="w-full text-sm bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-medium border border-stone-300 dark:border-stone-700 rounded-lg p-2.5 outline-none focus:border-indigo-500"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">身高 (cm)</label>
+            <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">身高 (cm)</label>
             <input
               type="text"
               value={modelProfile.height}
               onChange={(e) => setModelProfile({ ...modelProfile, height: e.target.value })}
-              className="w-full text-sm bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
+              className="w-full text-sm bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-medium border border-stone-300 dark:border-stone-700 rounded-lg p-2.5 outline-none focus:border-indigo-500"
             />
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="text-xs font-bold text-stone-700">體重 (kg)</label>
-              <label className="flex items-center gap-1 text-[11px] font-semibold text-stone-500 cursor-pointer">
+              <label className="text-xs font-bold text-stone-700 dark:text-stone-300">體重 (kg)</label>
+              <label className="flex items-center gap-1 text-[11px] font-semibold text-stone-500 dark:text-stone-400 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={modelProfile.hideWeight}
@@ -297,18 +305,18 @@ export default function ProfileTab({
               value={modelProfile.weight}
               disabled={modelProfile.hideWeight}
               onChange={(e) => setModelProfile({ ...modelProfile, weight: e.target.value })}
-              className={`w-full text-sm font-medium border border-stone-300 rounded-lg p-2.5 outline-none ${
+              className={`w-full text-sm font-medium border border-stone-300 dark:border-stone-700 rounded-lg p-2.5 outline-none ${
                 modelProfile.hideWeight
-                  ? "bg-stone-200/50 text-stone-400 cursor-not-allowed"
-                  : "bg-[#f5f3ef] text-stone-800 focus:border-indigo-500 focus:bg-white"
+                  ? "bg-stone-200/50 dark:bg-stone-850 text-stone-400 cursor-not-allowed"
+                  : "bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:border-indigo-500"
               }`}
             />
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="text-xs font-bold text-stone-700">三圍尺寸</label>
-              <label className="flex items-center gap-1 text-[11px] font-semibold text-stone-500 cursor-pointer">
+              <label className="text-xs font-bold text-stone-700 dark:text-stone-300">三圍尺寸</label>
+              <label className="flex items-center gap-1 text-[11px] font-semibold text-stone-500 dark:text-stone-400 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={!!modelProfile.hideMeasurements}
@@ -324,23 +332,23 @@ export default function ProfileTab({
               disabled={modelProfile.hideMeasurements}
               onChange={(e) => setModelProfile({ ...modelProfile, measurements: e.target.value })}
               placeholder="例：32B / 24 / 34"
-              className={`w-full text-sm font-medium border border-stone-300 rounded-lg p-2.5 outline-none ${
+              className={`w-full text-sm font-medium border border-stone-300 dark:border-stone-700 rounded-lg p-2.5 outline-none ${
                 modelProfile.hideMeasurements
-                  ? "bg-stone-200/50 text-stone-400 cursor-not-allowed"
-                  : "bg-[#f5f3ef] text-stone-800 focus:border-indigo-500 focus:bg-white"
+                  ? "bg-stone-200/50 dark:bg-stone-850 text-stone-400 cursor-not-allowed"
+                  : "bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:border-indigo-500"
               }`}
             />
           </div>
         </div>
 
         {/* 接案合作模式 */}
-        <div className="pt-3 border-t border-stone-200 space-y-3">
+        <div className="pt-3 border-t border-stone-200 dark:border-stone-800 space-y-3">
           <div>
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-stone-800">
+              <label className="block text-xs font-bold text-stone-800 dark:text-stone-200">
                 💰 接案合作模式 (最多 4 種，連動前台約拍選單)
               </label>
-              <span className="text-[11px] text-indigo-700 font-bold bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
+              <span className="text-[11px] text-indigo-700 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded">
                 已啟用：{selectedCoopModes.length + (customCoop1.trim() ? 1 : 0) + (customCoop2.trim() ? 1 : 0)} / 4 種
               </span>
             </div>
@@ -358,8 +366,8 @@ export default function ProfileTab({
                   onClick={() => toggleCoopMode(item.id)}
                   className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition ${
                     isChecked
-                      ? "bg-amber-50 border-amber-300 text-amber-900 font-bold shadow-2xs"
-                      : "bg-[#f5f3ef] border-stone-300 text-stone-700 hover:bg-[#eae7e1] font-medium"
+                      ? "bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-bold shadow-2xs"
+                      : "bg-[#f5f3ef] dark:bg-stone-800 border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-[#eae7e1] font-medium"
                   }`}
                 >
                   <input
@@ -375,7 +383,7 @@ export default function ProfileTab({
           </div>
 
           <div className="space-y-2 pt-1">
-            <span className="text-[11px] font-bold text-stone-700 block">
+            <span className="text-[11px] font-bold text-stone-700 dark:text-stone-300 block">
               ✦ 自訂接案模式（可自由填寫 2 種）：
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -384,21 +392,21 @@ export default function ProfileTab({
                 value={customCoop1}
                 onChange={(e) => setCustomCoop1(e.target.value)}
                 placeholder="自訂模式 1 (例：車馬費補貼)"
-                className="w-full text-xs bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500"
+                className="w-full text-xs bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-medium border border-stone-300 dark:border-stone-700 rounded-lg p-2.5 outline-none focus:border-indigo-500"
               />
               <input
                 type="text"
                 value={customCoop2}
                 onChange={(e) => setCustomCoop2(e.target.value)}
                 placeholder="自訂模式 2 (例：棚費平攤)"
-                className="w-full text-xs bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500"
+                className="w-full text-xs bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-medium border border-stone-300 dark:border-stone-700 rounded-lg p-2.5 outline-none focus:border-indigo-500"
               />
             </div>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-stone-700 mb-1.5">
+          <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1.5">
             外拍安全守則：是否攜伴
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -413,49 +421,49 @@ export default function ProfileTab({
                 onClick={() => setModelProfile({ ...modelProfile, companionPolicy: item.val })}
                 className={`p-3 text-left rounded-xl border transition cursor-pointer ${
                   modelProfile.companionPolicy === item.val
-                    ? "bg-indigo-50/90 border-indigo-500 text-indigo-900 shadow-xs"
-                    : "bg-[#f5f3ef] border-stone-300 text-stone-700 hover:bg-[#eae7e1]"
+                    ? "bg-indigo-50/90 dark:bg-indigo-950/70 border-indigo-500 text-indigo-900 dark:text-indigo-200 shadow-xs"
+                    : "bg-[#f5f3ef] dark:bg-stone-800 border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-[#eae7e1]"
                 }`}
               >
                 <div className="text-xs font-bold">{item.val}</div>
-                <div className="text-[10px] text-stone-500 mt-0.5">{item.desc}</div>
+                <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">{item.desc}</div>
               </button>
             ))}
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-stone-700 mb-1">個人主頁詳細介紹 (Bio)</label>
+          <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">個人主頁詳細介紹 (Bio)</label>
           <textarea
             rows={4}
             value={modelProfile.bio}
             onChange={(e) => setModelProfile({ ...modelProfile, bio: e.target.value })}
-            className="w-full text-sm bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 leading-relaxed"
+            className="w-full text-sm bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-medium border border-stone-300 dark:border-stone-700 rounded-lg p-2.5 outline-none focus:border-indigo-500 leading-relaxed"
           />
         </div>
       </div>
 
       {/* 風格標籤與接案邊界 */}
-      <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-5">
-        <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200 pb-2">
+      <div className="bg-[#fbfaf8] dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-6 shadow-sm space-y-5">
+        <h3 className="text-sm font-bold text-stone-800 dark:text-stone-100 border-b border-stone-200 dark:border-stone-800 pb-2">
           風格標籤與接案邊界 (防騷擾機制)
         </h3>
 
         <div>
-          <label className="block text-xs font-bold text-emerald-800 mb-2">
+          <label className="block text-xs font-bold text-emerald-800 dark:text-emerald-400 mb-2">
             🟢 可接拍攝風格標籤
           </label>
           <div className="flex flex-wrap gap-2 mb-3">
             {styles.map((tag) => (
               <span
                 key={tag}
-                className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-lg text-xs font-semibold flex items-center gap-1.5"
               >
                 ✓ {tag}
                 <button
                   type="button"
                   onClick={() => handleRemoveStyle(tag)}
-                  className="text-emerald-600 hover:text-emerald-900 font-bold ml-1 cursor-pointer"
+                  className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-900 font-bold ml-1 cursor-pointer"
                 >
                   ✕
                 </button>
@@ -468,7 +476,7 @@ export default function ProfileTab({
               value={newStyleInput}
               onChange={(e) => setNewStyleInput(e.target.value)}
               placeholder="新增風格 (例：古風漢服)"
-              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
+              className="flex-1 text-xs bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-medium border border-stone-300 dark:border-stone-700 rounded-lg p-2 outline-none focus:border-indigo-500"
             />
             <button
               type="button"
@@ -480,21 +488,21 @@ export default function ProfileTab({
           </div>
         </div>
 
-        <div className="pt-3 border-t border-stone-200">
-          <label className="block text-xs font-bold text-rose-800 mb-2">
+        <div className="pt-3 border-t border-stone-200 dark:border-stone-800">
+          <label className="block text-xs font-bold text-rose-800 dark:text-rose-400 mb-2">
             🔴 拍攝禁忌與拒絕尺度 (醒目標註)
           </label>
           <div className="flex flex-wrap gap-2 mb-3">
             {boundaries.map((tag) => (
               <span
                 key={tag}
-                className="px-3 py-1 bg-rose-50 text-rose-800 border border-rose-300 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                className="px-3 py-1 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800 rounded-lg text-xs font-semibold flex items-center gap-1.5"
               >
                 ✕ {tag}
                 <button
                   type="button"
                   onClick={() => handleRemoveBoundary(tag)}
-                  className="text-rose-600 hover:text-rose-900 font-bold ml-1 cursor-pointer"
+                  className="text-rose-600 dark:text-rose-400 hover:text-rose-900 font-bold ml-1 cursor-pointer"
                 >
                   ✕
                 </button>
@@ -507,7 +515,7 @@ export default function ProfileTab({
               value={newBoundaryInput}
               onChange={(e) => setNewBoundaryInput(e.target.value)}
               placeholder="新增禁忌 (例：不拍內衣/睡衣)"
-              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
+              className="flex-1 text-xs bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-medium border border-stone-300 dark:border-stone-700 rounded-lg p-2 outline-none focus:border-indigo-500"
             />
             <button
               type="button"
@@ -521,52 +529,52 @@ export default function ProfileTab({
       </div>
 
       {/* 5 組社群連結 */}
-      <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-        <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200 pb-2">
+      <div className="bg-[#fbfaf8] dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <h3 className="text-sm font-bold text-stone-800 dark:text-stone-100 border-b border-stone-200 dark:border-stone-800 pb-2">
           公開社群與作品連結 (最多 5 組)
         </h3>
         <div className="space-y-3 pt-1">
           <div className="flex items-center gap-3">
-            <span className="w-24 text-xs font-bold text-stone-700">📸 Instagram</span>
+            <span className="w-24 text-xs font-bold text-stone-700 dark:text-stone-300">📸 Instagram</span>
             <input
               type="url"
               value={socialLinks.instagram}
               onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
-              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
+              className="flex-1 text-xs bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-lg p-2 outline-none focus:border-indigo-500"
             />
           </div>
           <div className="flex items-center gap-3">
-            <span className="w-24 text-xs font-bold text-stone-700">📘 Facebook</span>
+            <span className="w-24 text-xs font-bold text-stone-700 dark:text-stone-300">📘 Facebook</span>
             <input
               type="url"
               value={socialLinks.facebook}
               onChange={(e) => setSocialLinks({ ...socialLinks, facebook: e.target.value })}
-              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
+              className="flex-1 text-xs bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-lg p-2 outline-none focus:border-indigo-500"
             />
           </div>
           <div className="flex items-center gap-3">
-            <span className="w-24 text-xs font-bold text-stone-700">🧵 Threads</span>
+            <span className="w-24 text-xs font-bold text-stone-700 dark:text-stone-300">🧵 Threads</span>
             <input
               type="url"
               value={socialLinks.threads}
               onChange={(e) => setSocialLinks({ ...socialLinks, threads: e.target.value })}
-              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
+              className="flex-1 text-xs bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-lg p-2 outline-none focus:border-indigo-500"
             />
           </div>
-          <div className="flex items-center gap-2 pt-2 border-t border-stone-100">
+          <div className="flex items-center gap-2 pt-2 border-t border-stone-100 dark:border-stone-800">
             <input
               type="text"
               value={socialLinks.custom1Name}
               onChange={(e) => setSocialLinks({ ...socialLinks, custom1Name: e.target.value })}
               placeholder="自訂標題 1"
-              className="w-32 text-xs font-bold bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
+              className="w-32 text-xs font-bold bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-lg p-2 outline-none focus:border-indigo-500"
             />
             <input
               type="url"
               value={socialLinks.custom1Url}
               onChange={(e) => setSocialLinks({ ...socialLinks, custom1Url: e.target.value })}
               placeholder="https://..."
-              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
+              className="flex-1 text-xs bg-[#f5f3ef] dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-lg p-2 outline-none focus:border-indigo-500"
             />
           </div>
         </div>
