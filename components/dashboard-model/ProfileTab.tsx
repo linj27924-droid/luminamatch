@@ -19,6 +19,7 @@ interface ProfileTabProps {
     experienceYears: string;
     bio: string;
     coopModes: string;
+    portfolioImages?: string[];
   };
   setModelProfile: React.Dispatch<React.SetStateAction<any>>;
   selectedCoopModes: string[];
@@ -77,6 +78,30 @@ export default function ProfileTab({
   setSocialLinks,
   handleSaveProfile,
 }: ProfileTabProps) {
+  const portfolio = modelProfile.portfolioImages || [];
+
+  const handleAddPortfolioImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    if (portfolio.length >= 9) {
+      alert("最多僅能上傳 9 張精選相簿照片！若需更換請先刪除既有照片。");
+      return;
+    }
+
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const updated = [...portfolio, reader.result as string].slice(0, 9);
+      setModelProfile({ ...modelProfile, portfolioImages: updated });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePortfolioImage = (index: number) => {
+    const updated = portfolio.filter((_, i) => i !== index);
+    setModelProfile({ ...modelProfile, portfolioImages: updated });
+  };
+
   return (
     <form onSubmit={handleSaveProfile} className="space-y-6">
       {/* 1:1 封面對焦微調 */}
@@ -154,6 +179,57 @@ export default function ProfileTab({
         </div>
       </div>
 
+      {/* ★ 9 張精選相簿上傳與管理區塊 ★ */}
+      <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="border-b border-stone-200 pb-2 flex justify-between items-center">
+          <div>
+            <h3 className="text-sm font-bold text-stone-800 flex items-center gap-2">
+              <span>📸</span>
+              <span>精選外拍作品相簿管理 ({portfolio.length} / 9 張)</span>
+            </h3>
+            <p className="text-[11px] text-stone-500 mt-0.5">
+              顯示於個人主頁「約拍表單」正下方，供攝影師快速欣賞您的代表作
+            </p>
+          </div>
+          {portfolio.length < 9 && (
+            <label className="cursor-pointer px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs">
+              + 上傳代表作
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAddPortfolioImage}
+                className="hidden"
+              />
+            </label>
+          )}
+        </div>
+
+        {portfolio.length === 0 ? (
+          <div className="p-8 text-center bg-[#f5f3ef] rounded-xl border border-dashed border-stone-300 text-xs text-stone-400">
+            目前尚未上傳作品集相片，請點擊右上角「+ 上傳代表作」新增照片（最多 9 張）。
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
+            {portfolio.map((img, idx) => (
+              <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-stone-300 group bg-stone-100 shadow-2xs">
+                <img src={img} alt={`作品 ${idx + 1}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handleRemovePortfolioImage(idx)}
+                  className="absolute top-1 right-1 w-5 h-5 bg-rose-600 hover:bg-rose-700 text-white text-[10px] rounded-full flex items-center justify-center font-bold shadow-xs cursor-pointer opacity-85 group-hover:opacity-100 transition"
+                  title="刪除此張相片"
+                >
+                  ✕
+                </button>
+                <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[8px] font-mono px-1 rounded">
+                  #{idx + 1}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* 基本資料與安全隱私 */}
       <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-5">
         <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200 pb-2">
@@ -167,7 +243,7 @@ export default function ProfileTab({
               type="text"
               value={modelProfile.name}
               onChange={(e) => setModelProfile({ ...modelProfile, name: e.target.value })}
-              className="w-full text-sm bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
+              className="w-full text-sm bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
               required
             />
           </div>
@@ -177,7 +253,7 @@ export default function ProfileTab({
               type="text"
               value={modelProfile.city}
               onChange={(e) => setModelProfile({ ...modelProfile, city: e.target.value })}
-              className="w-full text-sm bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
+              className="w-full text-sm bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
               required
             />
           </div>
@@ -187,7 +263,7 @@ export default function ProfileTab({
               type="text"
               value={modelProfile.experienceYears}
               onChange={(e) => setModelProfile({ ...modelProfile, experienceYears: e.target.value })}
-              className="w-full text-sm bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
+              className="w-full text-sm bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
             />
           </div>
         </div>
@@ -199,7 +275,7 @@ export default function ProfileTab({
               type="text"
               value={modelProfile.height}
               onChange={(e) => setModelProfile({ ...modelProfile, height: e.target.value })}
-              className="w-full text-sm bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
+              className="w-full text-sm bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
             />
           </div>
 
@@ -257,23 +333,19 @@ export default function ProfileTab({
           </div>
         </div>
 
-        {/* 接案合作模式：預設 2 種 + 自訂 2 種，總共最多 4 種 */}
+        {/* 接案合作模式 */}
         <div className="pt-3 border-t border-stone-200 space-y-3">
           <div>
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-stone-800">
-                💰 接案合作模式 (預設 2 種 + 自訂 2 種，最多 4 種，連動前台約拍選單)
+                💰 接案合作模式 (最多 4 種，連動前台約拍選單)
               </label>
               <span className="text-[11px] text-indigo-700 font-bold bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
                 已啟用：{selectedCoopModes.length + (customCoop1.trim() ? 1 : 0) + (customCoop2.trim() ? 1 : 0)} / 4 種
               </span>
             </div>
-            <p className="text-[11px] text-stone-500 mt-0.5">
-              此處設定之選項將即時連動攝影師在約拍時的「合作性質」下拉選單：
-            </p>
           </div>
 
-          {/* 1. 預設 2 種主流選項 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {[
               { id: "商業有酬", label: "商業有酬 (有預算商案優先)" },
@@ -302,39 +374,32 @@ export default function ProfileTab({
             })}
           </div>
 
-          {/* 2. 自訂 2 種自由填寫選項 */}
           <div className="space-y-2 pt-1">
             <span className="text-[11px] font-bold text-stone-700 block">
-              ✦ 自訂接案模式（可自由填寫 2 種，未填寫則不顯示）：
+              ✦ 自訂接案模式（可自由填寫 2 種）：
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] font-bold text-stone-500 mb-1">自訂模式 1</label>
-                <input
-                  type="text"
-                  value={customCoop1}
-                  onChange={(e) => setCustomCoop1(e.target.value)}
-                  placeholder="例：車馬費 / 梳化治裝補貼"
-                  className="w-full text-xs bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-stone-500 mb-1">自訂模式 2</label>
-                <input
-                  type="text"
-                  value={customCoop2}
-                  onChange={(e) => setCustomCoop2(e.target.value)}
-                  placeholder="例：租棚費 / 場地門票雙方平攤"
-                  className="w-full text-xs bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
-                />
-              </div>
+              <input
+                type="text"
+                value={customCoop1}
+                onChange={(e) => setCustomCoop1(e.target.value)}
+                placeholder="自訂模式 1 (例：車馬費補貼)"
+                className="w-full text-xs bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500"
+              />
+              <input
+                type="text"
+                value={customCoop2}
+                onChange={(e) => setCustomCoop2(e.target.value)}
+                placeholder="自訂模式 2 (例：棚費平攤)"
+                className="w-full text-xs bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500"
+              />
             </div>
           </div>
         </div>
 
         <div>
           <label className="block text-xs font-bold text-stone-700 mb-1.5">
-            外拍安全守則：是否攜伴 (親友同行)
+            外拍安全守則：是否攜伴
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {[
@@ -365,7 +430,7 @@ export default function ProfileTab({
             rows={4}
             value={modelProfile.bio}
             onChange={(e) => setModelProfile({ ...modelProfile, bio: e.target.value })}
-            className="w-full text-sm bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white leading-relaxed"
+            className="w-full text-sm bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 leading-relaxed"
           />
         </div>
       </div>
@@ -403,7 +468,7 @@ export default function ProfileTab({
               value={newStyleInput}
               onChange={(e) => setNewStyleInput(e.target.value)}
               placeholder="新增風格 (例：古風漢服)"
-              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500 focus:bg-white"
+              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
             />
             <button
               type="button"
@@ -442,7 +507,7 @@ export default function ProfileTab({
               value={newBoundaryInput}
               onChange={(e) => setNewBoundaryInput(e.target.value)}
               placeholder="新增禁忌 (例：不拍內衣/睡衣)"
-              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500 focus:bg-white"
+              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 font-medium border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
             />
             <button
               type="button"
@@ -467,7 +532,7 @@ export default function ProfileTab({
               type="url"
               value={socialLinks.instagram}
               onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
-              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500 focus:bg-white"
+              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
             />
           </div>
           <div className="flex items-center gap-3">
@@ -476,16 +541,16 @@ export default function ProfileTab({
               type="url"
               value={socialLinks.facebook}
               onChange={(e) => setSocialLinks({ ...socialLinks, facebook: e.target.value })}
-              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500 focus:bg-white"
+              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
             />
           </div>
           <div className="flex items-center gap-3">
-            <span className="w-24 text-xs font-bold text-stone-700">🧵 Threads (脆)</span>
+            <span className="w-24 text-xs font-bold text-stone-700">🧵 Threads</span>
             <input
               type="url"
               value={socialLinks.threads}
               onChange={(e) => setSocialLinks({ ...socialLinks, threads: e.target.value })}
-              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500 focus:bg-white"
+              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
             />
           </div>
           <div className="flex items-center gap-2 pt-2 border-t border-stone-100">
@@ -501,23 +566,7 @@ export default function ProfileTab({
               value={socialLinks.custom1Url}
               onChange={(e) => setSocialLinks({ ...socialLinks, custom1Url: e.target.value })}
               placeholder="https://..."
-              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500 focus:bg-white"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={socialLinks.custom2Name}
-              onChange={(e) => setSocialLinks({ ...socialLinks, custom2Name: e.target.value })}
-              placeholder="自訂標題 2"
-              className="w-32 text-xs font-bold bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
-            />
-            <input
-              type="url"
-              value={socialLinks.custom2Url}
-              onChange={(e) => setSocialLinks({ ...socialLinks, custom2Url: e.target.value })}
-              placeholder="https://..."
-              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500 focus:bg-white"
+              className="flex-1 text-xs bg-[#f5f3ef] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
             />
           </div>
         </div>
@@ -528,7 +577,7 @@ export default function ProfileTab({
           type="submit"
           className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-xs transition cursor-pointer"
         >
-          儲存所有個人簡介、封面位置與設定
+          儲存所有個人簡介、9張相簿與設定
         </button>
       </div>
     </form>

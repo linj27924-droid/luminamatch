@@ -35,38 +35,30 @@ export default function RateCardModal({
     onRequestSubmit(applicantName.trim());
   };
 
-  // 是否可以直接展示圖片（自動模式 或 模特已核准）
   const canViewImages = accessMode === "auto" || isApproved;
+  const watermarkText = `僅供【${currentUserName || "授權攝影師"}】專屬審閱 · LuminaMatch 存證`;
 
   return (
     <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-[#fbfaf8] border border-stone-200 rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] flex flex-col">
-        {/* 標頭 */}
+      <div className="bg-[#fbfaf8] border border-stone-200 rounded-2xl max-w-xl w-full p-6 shadow-2xl max-h-[92vh] flex flex-col">
         <div className="flex justify-between items-center pb-3 border-b border-stone-200">
           <div>
             <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
               <span>📄</span>
-              <span>{modelName} 的商業合作報價單</span>
+              <span>{modelName} 的商業報價單</span>
             </h3>
             <p className="text-[11px] text-stone-500 mt-0.5">
-              包含外拍時薪、商案型錄、棚拍加乘與版權規範說明
+              已啟用防偽浮水印存證保護，嚴禁外流轉傳
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-stone-400 hover:text-stone-600 text-lg font-bold cursor-pointer"
-          >
-            ✕
-          </button>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-600 text-lg font-bold cursor-pointer">✕</button>
         </div>
 
-        {/* 內容區域 */}
         <div className="overflow-y-auto space-y-4 my-4 flex-1 pr-1">
           {canViewImages ? (
-            /* 狀態 1：已解鎖或自動顯示 */
             <div className="space-y-4">
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 font-medium">
-                ✓ 報價單已成功解鎖！請查閱下方完整項目規範：
+                ✓ 報價單已成功授權解鎖！上下滾動查閱長條價目表：
               </div>
 
               {rateCardImages.length === 0 ? (
@@ -76,34 +68,45 @@ export default function RateCardModal({
               ) : (
                 <div className="space-y-4">
                   {rateCardImages.map((img, idx) => (
-                    <div key={idx} className="rounded-xl overflow-hidden border border-stone-300 shadow-sm bg-white">
-                      <div className="bg-stone-100 px-3 py-1.5 border-b border-stone-200 text-[11px] font-bold text-stone-600">
-                        報價單項目 {idx + 1}
+                    <div key={idx} className="rounded-2xl overflow-hidden border border-stone-300 shadow-xs bg-white relative">
+                      <div className="bg-stone-100 px-3 py-1.5 border-b border-stone-200 text-[11px] font-bold text-stone-600 flex justify-between items-center">
+                        <span>長條報價單項目 {idx + 1}</span>
+                        <span className="text-[10px] text-indigo-700 font-mono">🔒 浮水印保護中</span>
                       </div>
-                      <img src={img} alt={`報價單 ${idx + 1}`} className="w-full h-auto object-contain" />
+                      <div className="p-2 bg-stone-50 flex justify-center relative">
+                        <img
+                          src={img}
+                          alt={`報價單 ${idx + 1}`}
+                          className="w-full h-auto object-contain rounded-lg shadow-2xs select-none"
+                        />
+                        {/* ★ 半透明防偽浮水印 ★ */}
+                        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                          <span className="text-stone-900/25 font-bold text-sm tracking-widest transform -rotate-12 select-none border border-stone-900/10 px-4 py-2 rounded-xl">
+                            {watermarkText}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
           ) : isPending ? (
-            /* 狀態 2：申請中等待審核 */
             <div className="p-8 text-center bg-amber-50 border border-amber-300 rounded-xl space-y-2">
               <div className="text-3xl">⏳</div>
               <h4 className="text-sm font-bold text-amber-900">索取申請已送達模特後台！</h4>
               <p className="text-xs text-amber-800 leading-relaxed max-w-sm mx-auto font-medium">
-                模特設定了隱私保護審核機制。我們已向【{modelName}】發送索取通知，待模特於後台確認同意後，即可直接在此檢視報價單。
+                模特設定了隱私保護審核機制。我們已向【{modelName}】發送時效索取通知，待模特於後台確認同意後即可查閱。
               </p>
             </div>
           ) : (
-            /* 狀態 3：尚未索取，需送出申請 */
             <form onSubmit={handleSendRequest} className="space-y-4 bg-[#f5f3ef] p-5 rounded-xl border border-stone-300">
               <div>
                 <span className="text-xs font-bold text-stone-800 block">
                   🔒 本報價單受模特隱私保護，需索取後由模特授權查閱
                 </span>
                 <p className="text-[11px] text-stone-500 mt-1">
-                  請確認您的攝影師稱呼，送出後將立即通知模特進行授權：
+                  請確認您的攝影師稱呼，送出後將立即通知模特進行時效授權：
                 </p>
               </div>
 
@@ -133,7 +136,6 @@ export default function RateCardModal({
           )}
         </div>
 
-        {/* 底部關閉按鈕 */}
         <div className="pt-2 border-t border-stone-200 flex justify-end">
           <button
             type="button"

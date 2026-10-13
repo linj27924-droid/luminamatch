@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import ModelSidebar from "../../../components/model-detail/ModelSidebar";
 import BookingCalendar from "../../../components/model-detail/BookingCalendar";
 import BookingForm from "../../../components/model-detail/BookingForm";
+import PortfolioSection from "../../../components/model-detail/PortfolioSection";
 import PeerReviewSection, { PeerReview } from "../../../components/model-detail/PeerReviewSection";
 import RateCardModal from "../../../components/model-detail/RateCardModal";
 
@@ -43,7 +44,6 @@ function ModelDetailContent({
   const [currentUserRole, setCurrentUserRole] = useState<"model" | "photographer" | "guest">("guest");
   const [currentUserName, setCurrentUserName] = useState("陳攝影 (Alan Chen)");
 
-  // 1. 模特基本資料
   const [modelCover, setModelCover] = useState(
     "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80"
   );
@@ -63,6 +63,7 @@ function ModelDetailContent({
     boundaries: ["不接私房微醺", "謝絕比基尼泳裝", "禁未經同意肢體接觸"],
     companionPolicy: "可攜伴同行 (親友可全程在場陪同)",
     coopModes: "互惠創作 (TFCD) / 商業有酬皆可",
+    portfolioImages: [] as string[],
   });
 
   const [modelCoopOptions, setModelCoopOptions] = useState<string[]>([
@@ -80,13 +81,11 @@ function ModelDetailContent({
     custom2Url: "",
   });
 
-  // 2. 報價單模組連動狀態
   const [isRateCardModalOpen, setIsRateCardModalOpen] = useState(false);
   const [rateCardImages, setRateCardImages] = useState<string[]>([]);
   const [rateCardAccessMode, setRateCardAccessMode] = useState<"auto" | "require_approval">("require_approval");
   const [rateCardRequests, setRateCardRequests] = useState<any[]>([]);
 
-  // 3. 檔期日曆狀態
   const [viewYear, setViewYear] = useState(2026);
   const [viewMonth, setViewMonth] = useState(10);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -114,7 +113,6 @@ function ModelDetailContent({
 
   const [isQuietBlocked, setIsQuietBlocked] = useState(false);
 
-  // 4. 約拍表單欄位
   const [style, setStyle] = useState("");
   const [location, setLocation] = useState("");
   const [coopType, setCoopType] = useState("商業有酬");
@@ -181,6 +179,7 @@ function ModelDetailContent({
           boundaries: parsed.boundaries || prev.boundaries,
           companionPolicy: parsed.modelProfile?.companionPolicy || prev.companionPolicy,
           coopModes: parsed.modelProfile?.coopModes || prev.coopModes,
+          portfolioImages: parsed.modelProfile?.portfolioImages || prev.portfolioImages || [],
         }));
 
         if (parsed.socialLinks) setSocialLinks(parsed.socialLinks);
@@ -192,7 +191,6 @@ function ModelDetailContent({
       }
     }
 
-    // 讀取報價單配置
     const savedRateCard = localStorage.getItem("lumina_model_rate_card_config");
     if (savedRateCard) {
       try {
@@ -206,21 +204,18 @@ function ModelDetailContent({
     }
   }, [modelId]);
 
-  // 判斷當前攝影師是否已被核准查閱報價單
   const isCurrentPhotographerApproved = useMemo(() => {
     return rateCardRequests.some(
       (r) => r.photographerName === currentUserName && r.status === "approved"
     );
   }, [rateCardRequests, currentUserName]);
 
-  // 判斷當前攝影師是否在審核等待中
   const isCurrentPhotographerPending = useMemo(() => {
     return rateCardRequests.some(
       (r) => r.photographerName === currentUserName && r.status === "pending"
     );
   }, [rateCardRequests, currentUserName]);
 
-  // 攝影師發起索取申請
   const handleRateCardRequestSubmit = (applicantName: string) => {
     const newReq = {
       id: `rc_req_${Date.now()}`,
@@ -236,7 +231,7 @@ function ModelDetailContent({
     parsed.requests = updated;
     localStorage.setItem("lumina_model_rate_card_config", JSON.stringify(parsed));
 
-    alert(`📩 索取申請已送出！已通知【${modelInfo.name}】後台進行查閱授權。`);
+    alert(`📩 索取申請已送出！已通知【${modelInfo.name}】後台進行時效授權。`);
   };
 
   const daysInMonth = useMemo(
@@ -260,17 +255,17 @@ function ModelDetailContent({
   };
 
   return (
-    <main className="min-h-[calc(100vh-65px)] bg-stone-100/70 px-4 py-8">
+    <main className="min-h-[calc(100vh-65px)] bg-stone-100/70 dark:bg-stone-950 px-4 py-8 text-stone-800 dark:text-stone-200">
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <button
             onClick={() => router.back()}
-            className="text-xs font-bold text-stone-700 hover:text-stone-900 flex items-center gap-1 cursor-pointer"
+            className="text-xs font-bold text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white flex items-center gap-1 cursor-pointer"
           >
             ← 返回探索大廳
           </button>
 
-          <span className="text-[11px] font-bold px-2.5 py-1 bg-stone-200/80 rounded-lg text-stone-700">
+          <span className="text-[11px] font-bold px-2.5 py-1 bg-stone-200/80 dark:bg-stone-800 rounded-lg text-stone-700 dark:text-stone-300">
             當前造訪身分：
             <strong>
               {currentUserRole === "model"
@@ -283,7 +278,7 @@ function ModelDetailContent({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* 左側名片欄 + 獨立索取報價單模組按鈕 */}
+          {/* 左側名片欄 + 報價單按鈕 */}
           <div className="space-y-4">
             <ModelSidebar
               modelCover={modelCover}
@@ -292,18 +287,17 @@ function ModelDetailContent({
               socialLinks={socialLinks}
             />
 
-            {/* 新增：索取商業報價單專屬卡片按鈕 */}
-            <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-4 shadow-sm space-y-2.5">
+            <div className="bg-[#fbfaf8] dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-4 shadow-sm space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                <span className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
                   <span>💰</span>
                   <span>商業與棚拍報價單</span>
                 </span>
-                <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded font-bold">
+                <span className="text-[10px] bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded font-bold">
                   {rateCardAccessMode === "auto" ? "即時開放" : "需索取審核"}
                 </span>
               </div>
-              <p className="text-[11px] text-stone-500 leading-relaxed">
+              <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
                 欲了解商業棚拍、活動時薪、造型服裝與精修加價細則，可直接索取詳細圖片報價。
               </p>
               <button
@@ -323,7 +317,7 @@ function ModelDetailContent({
             </div>
           </div>
 
-          {/* 右側：日曆 + 約拍表單 */}
+          {/* 右側：行事曆 + 約拍協議表單 + ★ 正下方 9 張相簿模組 ★ */}
           <section className="md:col-span-2 space-y-6">
             <BookingCalendar
               modelName={modelInfo.name}
@@ -357,6 +351,12 @@ function ModelDetailContent({
               setProposalNotes={setProposalNotes}
               handleBooking={handleBooking}
             />
+
+            {/* ★ 獨立模組：顯示在發起拍攝合作協議正下方的 9 張精選相簿 ★ */}
+            <PortfolioSection
+              portfolioImages={modelInfo.portfolioImages}
+              modelName={modelInfo.name}
+            />
           </section>
         </div>
 
@@ -367,7 +367,6 @@ function ModelDetailContent({
         />
       </div>
 
-      {/* 索取商業報價單彈窗 */}
       <RateCardModal
         isOpen={isRateCardModalOpen}
         onClose={() => setIsRateCardModalOpen(false)}
@@ -389,7 +388,7 @@ export default function ModelDetailPage(props: {
   return (
     <Suspense
       fallback={
-        <main className="min-h-[calc(100vh-65px)] bg-stone-100/70 px-4 py-8 flex items-center justify-center">
+        <main className="min-h-[calc(100vh-65px)] bg-stone-100/70 dark:bg-stone-950 px-4 py-8 flex items-center justify-center">
           <div className="text-xs font-bold text-stone-500 animate-pulse">載入模特檔案中...</div>
         </main>
       }
