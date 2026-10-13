@@ -11,6 +11,8 @@ interface ModelSidebarProps {
     height: string;
     weight: string;
     hideWeight: boolean;
+    measurements?: string;
+    hideMeasurements?: boolean;
     experienceYears: string;
     bio: string;
     styles: string[];
@@ -68,6 +70,14 @@ export default function ModelSidebar({
             接案年資：{modelInfo.experienceYears} 年
           </span>
         </div>
+
+        {/* 三圍資訊：若未勾選隱藏且有內容才顯示，若隱藏則完全不顯示 */}
+        {!modelInfo.hideMeasurements && modelInfo.measurements && (
+          <div className="mt-2 text-[11px] text-stone-600 font-medium bg-[#f5f3ef] px-2.5 py-1 rounded-lg border border-stone-200 flex items-center justify-between">
+            <span className="text-stone-500">三圍尺寸</span>
+            <span className="font-bold text-stone-800">{modelInfo.measurements}</span>
+          </div>
+        )}
 
         {/* 風格標籤 */}
         <div className="mt-3">

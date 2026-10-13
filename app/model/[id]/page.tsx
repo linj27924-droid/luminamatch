@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useMemo, use, Suspense } from "react";
 import { useRouter } from "next/navigation";
 
-// 載入 4 個獨立零件 (同時提供別名與相對路徑確保編譯絕對成功)
 import ModelSidebar from "../../../components/model-detail/ModelSidebar";
 import BookingCalendar from "../../../components/model-detail/BookingCalendar";
 import BookingForm from "../../../components/model-detail/BookingForm";
 import PeerReviewSection, { PeerReview } from "../../../components/model-detail/PeerReviewSection";
+import RateCardModal from "../../../components/model-detail/RateCardModal";
 
 interface TimedReleaseTask {
   id: string;
@@ -29,17 +29,6 @@ const DEFAULT_MODEL_REVIEWS: PeerReview[] = [
     content: "表現力極強，眼神很有戲！約定 14:00 拍攝，提前 15 分鐘到場梳化完畢，溝通非常客氣且配合動作走位，完全不拖延時間，強烈推薦給各位同業！",
     punctualityScore: 5.0,
   },
-  {
-    id: "pr_m_2",
-    targetId: "hane",
-    targetType: "model",
-    authorRole: "photographer",
-    authorName: "攝影師 R***（已官方驗證）",
-    date: "2026-08-30",
-    tags: ["自備服裝搭配用心", "溝通效率高"],
-    content: "合作非常順利，拍攝前有主動傳服裝搭配圖確認風格，現場動作自然流暢，能快速抓到構圖節奏。",
-    punctualityScore: 5.0,
-  },
 ];
 
 function ModelDetailContent({
@@ -52,8 +41,9 @@ function ModelDetailContent({
   const modelId = decodeURIComponent(resolvedParams.id);
 
   const [currentUserRole, setCurrentUserRole] = useState<"model" | "photographer" | "guest">("guest");
+  const [currentUserName, setCurrentUserName] = useState("陳攝影 (Alan Chen)");
 
-  // 1. 模特基本名片資料
+  // 1. 模特基本資料
   const [modelCover, setModelCover] = useState(
     "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80"
   );
@@ -65,6 +55,8 @@ function ModelDetailContent({
     height: "165",
     weight: "48",
     hideWeight: false,
+    measurements: "32B / 24 / 34",
+    hideMeasurements: false,
     experienceYears: "3",
     bio: "熱愛日系清新自然光與韓系俐落時裝。注重拍攝氛圍與情緒表達，現場備有防護更衣裝備。",
     styles: ["日系清新", "韓系時裝", "復古底片"],
@@ -72,6 +64,11 @@ function ModelDetailContent({
     companionPolicy: "可攜伴同行 (親友可全程在場陪同)",
     coopModes: "互惠創作 (TFCD) / 商業有酬皆可",
   });
+
+  const [modelCoopOptions, setModelCoopOptions] = useState<string[]>([
+    "商業有酬",
+    "互惠創作 (TFCD)",
+  ]);
 
   const [socialLinks, setSocialLinks] = useState({
     instagram: "https://instagram.com/hane_model",
@@ -83,7 +80,13 @@ function ModelDetailContent({
     custom2Url: "",
   });
 
-  // 2. 檔期日曆狀態
+  // 2. 報價單模組連動狀態
+  const [isRateCardModalOpen, setIsRateCardModalOpen] = useState(false);
+  const [rateCardImages, setRateCardImages] = useState<string[]>([]);
+  const [rateCardAccessMode, setRateCardAccessMode] = useState<"auto" | "require_approval">("require_approval");
+  const [rateCardRequests, setRateCardRequests] = useState<any[]>([]);
+
+  // 3. 檔期日曆狀態
   const [viewYear, setViewYear] = useState(2026);
   const [viewMonth, setViewMonth] = useState(10);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -111,10 +114,10 @@ function ModelDetailContent({
 
   const [isQuietBlocked, setIsQuietBlocked] = useState(false);
 
-  // 3. 約拍表單欄位
+  // 4. 約拍表單欄位
   const [style, setStyle] = useState("");
   const [location, setLocation] = useState("");
-  const [coopType, setCoopType] = useState("互惠創作 (TFCD)");
+  const [coopType, setCoopType] = useState("商業有酬");
   const [proposalNotes, setProposalNotes] = useState("");
 
   const [photographerReviews, setPhotographerReviews] = useState<PeerReview[]>(DEFAULT_MODEL_REVIEWS);
@@ -135,8 +138,7 @@ function ModelDetailContent({
         const u = JSON.parse(savedUser);
         if (u.role === "model" || u.role === "photographer") {
           setCurrentUserRole(u.role);
-        } else {
-          setCurrentUserRole("guest");
+          if (u.name) setCurrentUserName(u.name);
         }
       } catch (e) {
         console.error(e);
@@ -147,22 +149,22 @@ function ModelDetailContent({
     if (savedModel) {
       try {
         const parsed = JSON.parse(savedModel);
-
         if (parsed.coverPhoto) setModelCover(parsed.coverPhoto);
         if (parsed.coverFocusY !== undefined) setModelFocusY(parsed.coverFocusY);
 
-        const activeStyles = parsed.styles || parsed.modelProfile?.styles || [
-          "日系清新",
-          "韓系時裝",
-        ];
+        let loadedCoopModes: string[] = [];
+        if (parsed.modelProfile?.allCoopModes && parsed.modelProfile.allCoopModes.length > 0) {
+          loadedCoopModes = parsed.modelProfile.allCoopModes;
+        } else if (parsed.modelProfile?.selectedCoopModes) {
+          loadedCoopModes = [...parsed.modelProfile.selectedCoopModes];
+          if (parsed.modelProfile.customCoop1?.trim()) loadedCoopModes.push(parsed.modelProfile.customCoop1.trim());
+          if (parsed.modelProfile.customCoop2?.trim()) loadedCoopModes.push(parsed.modelProfile.customCoop2.trim());
+        }
 
-        const activeBoundaries =
-          parsed.boundaries ||
-          parsed.modelProfile?.boundaries || [
-            "不接私房微醺",
-            "謝絕比基尼泳裝",
-            "禁未經同意肢體接觸",
-          ];
+        if (loadedCoopModes.length > 0) {
+          setModelCoopOptions(loadedCoopModes);
+          setCoopType((prev) => (loadedCoopModes.includes(prev) ? prev : loadedCoopModes[0]));
+        }
 
         setModelInfo((prev) => ({
           ...prev,
@@ -171,18 +173,14 @@ function ModelDetailContent({
           height: parsed.modelProfile?.height || prev.height,
           weight: parsed.modelProfile?.weight || prev.weight,
           hideWeight: parsed.modelProfile?.hideWeight ?? prev.hideWeight,
+          measurements: parsed.modelProfile?.measurements || prev.measurements,
+          hideMeasurements: parsed.modelProfile?.hideMeasurements ?? prev.hideMeasurements,
           experienceYears: parsed.modelProfile?.experienceYears || prev.experienceYears,
           bio: parsed.modelProfile?.bio || prev.bio,
-          styles: Array.isArray(activeStyles) ? activeStyles : [activeStyles],
-          boundaries: Array.isArray(activeBoundaries) ? activeBoundaries : [activeBoundaries],
-          companionPolicy:
-            parsed.modelProfile?.companionPolicy ||
-            parsed.companionPolicy ||
-            prev.companionPolicy,
-          coopModes:
-            parsed.modelProfile?.coopModes ||
-            parsed.coopModes ||
-            prev.coopModes,
+          styles: parsed.styles || prev.styles,
+          boundaries: parsed.boundaries || prev.boundaries,
+          companionPolicy: parsed.modelProfile?.companionPolicy || prev.companionPolicy,
+          coopModes: parsed.modelProfile?.coopModes || prev.coopModes,
         }));
 
         if (parsed.socialLinks) setSocialLinks(parsed.socialLinks);
@@ -190,83 +188,56 @@ function ModelDetailContent({
         if (parsed.customStatusList) setCustomStatusList(parsed.customStatusList);
         if (parsed.monthlyVisibility) setMonthlyVisibility(parsed.monthlyVisibility);
       } catch (e) {
-        console.error("載入模特設定失敗", e);
-      }
-    }
-
-    const savedTasks = localStorage.getItem("lumina_timed_release_tasks");
-    if (savedTasks) {
-      try {
-        setTimedReleaseTasks(JSON.parse(savedTasks));
-      } catch (e) {
         console.error(e);
       }
     }
 
-    const savedBlacklist = localStorage.getItem("lumina_model_blacklist");
-    if (savedBlacklist) {
+    // 讀取報價單配置
+    const savedRateCard = localStorage.getItem("lumina_model_rate_card_config");
+    if (savedRateCard) {
       try {
-        const bl = JSON.parse(savedBlacklist);
-        const isBlocked = bl.some(
-          (item: { name: string }) =>
-            item.name.includes("Alan Chen") || item.name.includes("陳攝影")
-        );
-        if (isBlocked) setIsQuietBlocked(true);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    const savedPhoto = localStorage.getItem("lumina_photographer_profile_data");
-    if (savedPhoto) {
-      try {
-        const parsedPhoto = JSON.parse(savedPhoto);
-        if (parsedPhoto.proposalTemplate) {
-          const pt = parsedPhoto.proposalTemplate;
-          if (pt.defaultStyle) setStyle(pt.defaultStyle);
-          if (pt.defaultLocation) setLocation(pt.defaultLocation);
-          if (pt.defaultCoopType) setCoopType(pt.defaultCoopType);
-          if (pt.defaultProposalLetter) setProposalNotes(pt.defaultProposalLetter);
-        }
-      } catch (e) {
-        console.error("載入攝影師預設範本失敗", e);
-      }
-    }
-
-    const savedReviews = localStorage.getItem("lumina_peer_reviews");
-    if (savedReviews) {
-      try {
-        const parsedR: PeerReview[] = JSON.parse(savedReviews);
-        const filtered = parsedR.filter(
-          (r) => r.targetId === modelId && r.targetType === "model"
-        );
-        setPhotographerReviews(() => {
-          const map = new Map<string, PeerReview>();
-          DEFAULT_MODEL_REVIEWS.forEach((r) => map.set(r.id, r));
-          filtered.forEach((r) => map.set(r.id, r));
-          return Array.from(map.values());
-        });
+        const parsedRC = JSON.parse(savedRateCard);
+        if (parsedRC.images) setRateCardImages(parsedRC.images);
+        if (parsedRC.accessMode) setRateCardAccessMode(parsedRC.accessMode);
+        if (parsedRC.requests) setRateCardRequests(parsedRC.requests);
       } catch (e) {
         console.error(e);
       }
     }
   }, [modelId]);
 
-  // 定時解鎖檢查
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      timedReleaseTasks.forEach((task) => {
-        if (!task.isExecuted && now >= new Date(task.releaseDateTime)) {
-          setMonthlyVisibility((prev) => ({
-            ...prev,
-            [task.targetMonthKey]: true,
-          }));
-        }
-      });
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [timedReleaseTasks]);
+  // 判斷當前攝影師是否已被核准查閱報價單
+  const isCurrentPhotographerApproved = useMemo(() => {
+    return rateCardRequests.some(
+      (r) => r.photographerName === currentUserName && r.status === "approved"
+    );
+  }, [rateCardRequests, currentUserName]);
+
+  // 判斷當前攝影師是否在審核等待中
+  const isCurrentPhotographerPending = useMemo(() => {
+    return rateCardRequests.some(
+      (r) => r.photographerName === currentUserName && r.status === "pending"
+    );
+  }, [rateCardRequests, currentUserName]);
+
+  // 攝影師發起索取申請
+  const handleRateCardRequestSubmit = (applicantName: string) => {
+    const newReq = {
+      id: `rc_req_${Date.now()}`,
+      photographerName: applicantName,
+      requestTime: new Date().toISOString().replace("T", " ").slice(0, 16),
+      status: "pending",
+    };
+    const updated = [...rateCardRequests, newReq];
+    setRateCardRequests(updated);
+
+    const saved = localStorage.getItem("lumina_model_rate_card_config");
+    const parsed = saved ? JSON.parse(saved) : {};
+    parsed.requests = updated;
+    localStorage.setItem("lumina_model_rate_card_config", JSON.stringify(parsed));
+
+    alert(`📩 索取申請已送出！已通知【${modelInfo.name}】後台進行查閱授權。`);
+  };
 
   const daysInMonth = useMemo(
     () => new Date(viewYear, viewMonth, 0).getDate(),
@@ -284,7 +255,7 @@ function ModelDetailContent({
       return;
     }
     alert(
-      `🎉 約拍提案已正式送出！\n\n約定日期：${selectedDate}\n預約風格：${style}\n預計地點：${location}\n\n已自動套用您的攝影提案範本，模特審核同意後將產生電子存證協議！`
+      `🎉 約拍提案已正式送出！\n\n約定日期：${selectedDate}\n合作性質：${coopType}\n預約風格：${style}\n預計地點：${location}`
     );
   };
 
@@ -312,17 +283,48 @@ function ModelDetailContent({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* 零件 1：左側欄位 (封面、名片、年資、風格、邊界、社群) */}
-          <ModelSidebar
-            modelCover={modelCover}
-            modelFocusY={modelFocusY}
-            modelInfo={modelInfo}
-            socialLinks={socialLinks}
-          />
+          {/* 左側名片欄 + 獨立索取報價單模組按鈕 */}
+          <div className="space-y-4">
+            <ModelSidebar
+              modelCover={modelCover}
+              modelFocusY={modelFocusY}
+              modelInfo={modelInfo}
+              socialLinks={socialLinks}
+            />
 
-          {/* 右側欄位：日曆 + 約拍表單 */}
+            {/* 新增：索取商業報價單專屬卡片按鈕 */}
+            <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-4 shadow-sm space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                  <span>💰</span>
+                  <span>商業與棚拍報價單</span>
+                </span>
+                <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded font-bold">
+                  {rateCardAccessMode === "auto" ? "即時開放" : "需索取審核"}
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-500 leading-relaxed">
+                欲了解商業棚拍、活動時薪、造型服裝與精修加價細則，可直接索取詳細圖片報價。
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsRateCardModalOpen(true)}
+                className="w-full py-2.5 bg-stone-900 hover:bg-black text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+              >
+                <span>📄</span>
+                <span>
+                  {rateCardAccessMode === "auto" || isCurrentPhotographerApproved
+                    ? "立即查閱報價單圖片"
+                    : isCurrentPhotographerPending
+                    ? "⏳ 報價單索取審核中..."
+                    : "索取詳細合作報價單"}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* 右側：日曆 + 約拍表單 */}
           <section className="md:col-span-2 space-y-6">
-            {/* 零件 2：檔期行事曆與定時鎖定提示 */}
             <BookingCalendar
               modelName={modelInfo.name}
               viewYear={viewYear}
@@ -340,13 +342,13 @@ function ModelDetailContent({
               setSelectedDate={setSelectedDate}
             />
 
-            {/* 零件 3：約拍提案表單 */}
             <BookingForm
               selectedDate={selectedDate}
               isQuietBlocked={isQuietBlocked}
               isMonthOpen={isMonthOpen}
               coopType={coopType}
               setCoopType={setCoopType}
+              coopOptions={modelCoopOptions}
               style={style}
               setStyle={setStyle}
               location={location}
@@ -358,12 +360,25 @@ function ModelDetailContent({
           </section>
         </div>
 
-        {/* 零件 4：底部攝影同業合作手札 */}
+        {/* 底部同行手札 */}
         <PeerReviewSection
           currentUserRole={currentUserRole}
           photographerReviews={photographerReviews}
         />
       </div>
+
+      {/* 索取商業報價單彈窗 */}
+      <RateCardModal
+        isOpen={isRateCardModalOpen}
+        onClose={() => setIsRateCardModalOpen(false)}
+        modelName={modelInfo.name}
+        rateCardImages={rateCardImages}
+        accessMode={rateCardAccessMode}
+        isApproved={isCurrentPhotographerApproved}
+        isPending={isCurrentPhotographerPending}
+        onRequestSubmit={handleRateCardRequestSubmit}
+        currentUserName={currentUserName}
+      />
     </main>
   );
 }

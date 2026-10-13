@@ -15,6 +15,7 @@ interface ProfileTabProps {
     hideWeight: boolean;
     companionPolicy: string;
     measurements: string;
+    hideMeasurements?: boolean;
     experienceYears: string;
     bio: string;
     coopModes: string;
@@ -229,33 +230,54 @@ export default function ProfileTab({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">三圍尺寸</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-xs font-bold text-stone-700">三圍尺寸</label>
+              <label className="flex items-center gap-1 text-[11px] font-semibold text-stone-500 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!modelProfile.hideMeasurements}
+                  onChange={(e) => setModelProfile({ ...modelProfile, hideMeasurements: e.target.checked })}
+                  className="rounded accent-indigo-600"
+                />
+                公開頁面隱藏
+              </label>
+            </div>
             <input
               type="text"
               value={modelProfile.measurements}
+              disabled={modelProfile.hideMeasurements}
               onChange={(e) => setModelProfile({ ...modelProfile, measurements: e.target.value })}
-              className="w-full text-sm bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
+              placeholder="例：32B / 24 / 34"
+              className={`w-full text-sm font-medium border border-stone-300 rounded-lg p-2.5 outline-none ${
+                modelProfile.hideMeasurements
+                  ? "bg-stone-200/50 text-stone-400 cursor-not-allowed"
+                  : "bg-[#f5f3ef] text-stone-800 focus:border-indigo-500 focus:bg-white"
+              }`}
             />
           </div>
         </div>
 
-        {/* 接案合作模式選項 */}
+        {/* 接案合作模式：預設 2 種 + 自訂 2 種，總共最多 4 種 */}
         <div className="pt-3 border-t border-stone-200 space-y-3">
           <div>
-            <label className="block text-xs font-bold text-stone-800">
-              💰 接案合作模式 (會同步顯示於大廳下方標籤)
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-stone-800">
+                💰 接案合作模式 (預設 2 種 + 自訂 2 種，最多 4 種，連動前台約拍選單)
+              </label>
+              <span className="text-[11px] text-indigo-700 font-bold bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
+                已啟用：{selectedCoopModes.length + (customCoop1.trim() ? 1 : 0) + (customCoop2.trim() ? 1 : 0)} / 4 種
+              </span>
+            </div>
             <p className="text-[11px] text-stone-500 mt-0.5">
-              勾選您接受的合作形式，或於下方自訂新增專屬合作條款：
+              此處設定之選項將即時連動攝影師在約拍時的「合作性質」下拉選單：
             </p>
           </div>
 
+          {/* 1. 預設 2 種主流選項 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {[
               { id: "商業有酬", label: "商業有酬 (有預算商案優先)" },
               { id: "互惠創作 (TFCD)", label: "互惠創作 (TFCD 雙向互免)" },
-              { id: "車馬費補貼", label: "車馬費 / 梳化治裝補貼" },
-              { id: "棚費平攤", label: "租棚費 / 場地門票雙方平攤" },
             ].map((item) => {
               const isChecked = selectedCoopModes.includes(item.id);
               return (
@@ -264,7 +286,7 @@ export default function ProfileTab({
                   onClick={() => toggleCoopMode(item.id)}
                   className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition ${
                     isChecked
-                      ? "bg-amber-50 border-amber-300 text-amber-900 font-bold"
+                      ? "bg-amber-50 border-amber-300 text-amber-900 font-bold shadow-2xs"
                       : "bg-[#f5f3ef] border-stone-300 text-stone-700 hover:bg-[#eae7e1] font-medium"
                   }`}
                 >
@@ -280,25 +302,32 @@ export default function ProfileTab({
             })}
           </div>
 
+          {/* 2. 自訂 2 種自由填寫選項 */}
           <div className="space-y-2 pt-1">
             <span className="text-[11px] font-bold text-stone-700 block">
-              ✦ 自訂接案模式（開放 2 組空白自填）：
+              ✦ 自訂接案模式（可自由填寫 2 種，未填寫則不顯示）：
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <input
-                type="text"
-                value={customCoop1}
-                onChange={(e) => setCustomCoop1(e.target.value)}
-                placeholder="自訂模式 1 (例：品牌贊助置換、分潤合作)"
-                className="w-full text-xs bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
-              />
-              <input
-                type="text"
-                value={customCoop2}
-                onChange={(e) => setCustomCoop2(e.target.value)}
-                placeholder="自訂模式 2 (例：需提前支付 30% 定金)"
-                className="w-full text-xs bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
-              />
+              <div>
+                <label className="block text-[10px] font-bold text-stone-500 mb-1">自訂模式 1</label>
+                <input
+                  type="text"
+                  value={customCoop1}
+                  onChange={(e) => setCustomCoop1(e.target.value)}
+                  placeholder="例：車馬費 / 梳化治裝補貼"
+                  className="w-full text-xs bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-stone-500 mb-1">自訂模式 2</label>
+                <input
+                  type="text"
+                  value={customCoop2}
+                  onChange={(e) => setCustomCoop2(e.target.value)}
+                  placeholder="例：租棚費 / 場地門票雙方平攤"
+                  className="w-full text-xs bg-[#f5f3ef] text-stone-800 placeholder:text-stone-400 font-medium border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:bg-white"
+                />
+              </div>
             </div>
           </div>
         </div>

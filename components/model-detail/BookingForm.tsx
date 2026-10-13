@@ -8,6 +8,7 @@ interface BookingFormProps {
   isMonthOpen: boolean;
   coopType: string;
   setCoopType: (v: string) => void;
+  coopOptions?: string[]; // 新增：連動模特後台的合作模式選項
   style: string;
   setStyle: (v: string) => void;
   location: string;
@@ -23,6 +24,7 @@ export default function BookingForm({
   isMonthOpen,
   coopType,
   setCoopType,
+  coopOptions = ["商業有酬", "互惠創作 (TFCD)"],
   style,
   setStyle,
   location,
@@ -31,6 +33,12 @@ export default function BookingForm({
   setProposalNotes,
   handleBooking,
 }: BookingFormProps) {
+  // 若傳入的選項是空的，提供保護預設值
+  const availableOptions =
+    coopOptions && coopOptions.length > 0
+      ? coopOptions
+      : ["商業有酬", "互惠創作 (TFCD)"];
+
   return (
     <form
       onSubmit={handleBooking}
@@ -42,7 +50,7 @@ export default function BookingForm({
           <p className="text-xs font-semibold mt-0.5">
             {selectedDate ? (
               <span className="text-indigo-700 font-bold">
-                ✓ 已選定約定日期：{selectedDate}
+                ✓ 已選定約定日期：${selectedDate}
               </span>
             ) : (
               <span className="text-stone-500 font-medium">
@@ -52,22 +60,31 @@ export default function BookingForm({
           </p>
         </div>
         <span className="text-[11px] text-indigo-800 bg-indigo-100 border border-indigo-300 px-2 py-0.5 rounded font-bold">
-          ✦ 已自動帶入您的預設範本
+          ✦ 合作性質已連動模特自訂規則
         </span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold text-stone-900 mb-1">
-            合作性質
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-xs font-bold text-stone-900">
+              合作性質 (連動模特接案設定)
+            </label>
+            <span className="text-[10px] text-stone-500 font-medium">
+              共 {availableOptions.length} 種模式可選
+            </span>
+          </div>
+          {/* 連動模特後台設定的下拉選單 */}
           <select
             value={coopType}
             onChange={(e) => setCoopType(e.target.value)}
-            className="w-full text-xs font-semibold bg-white text-stone-900 border border-stone-400 rounded-lg p-2.5 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs cursor-pointer"
+            className="w-full text-xs font-bold bg-white text-stone-900 border border-stone-400 rounded-lg p-2.5 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs cursor-pointer"
           >
-            <option value="互惠創作 (TFCD)">互惠創作 (TFCD)</option>
-            <option value="商業有酬">商業有酬</option>
+            {availableOptions.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
           </select>
         </div>
 
