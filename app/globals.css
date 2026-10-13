@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 強制確保所有圖片遵守容器邊界，防止原始高解析度圖片撐爆版面 */
+img, svg, video, canvas, audio, iframe, embed, object {
+  display: block;
+  max-width: 100%;
+}
+
 :root {
   --background: #f5f4f0;
   --foreground: #1c1917;
