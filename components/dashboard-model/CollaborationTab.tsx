@@ -1,16 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+
+export type CollabCategory = "invite" | "tfcd" | "commercial";
 
 export interface CollaborationProject {
   id: string;
-  bookingId: string;
+  caseNumber: string; // 案件流水號 (例: INV-20261015-001)
+  bookingId?: string;
+  category: CollabCategory; // invite: 邀約拍攝, tfcd: 互惠拍攝, commercial: 商案拍攝
   photographerName: string;
   shootDate: string;
   exactTime: string;
   exactLocation: string;
-  coordinates?: string; // GPS 經緯度座標 (例如: 25.0569, 121.5074)
-  locationGuide: string;
+  coordinates?: string;
+  locationGuide?: string;
   coopType: string;
   remuneration?: string;
   bankInfo: {
@@ -23,17 +27,18 @@ export interface CollaborationProject {
     id: string;
     title: string;
     description: string;
-    image?: string; // 上傳服裝款式參考圖
-    modelConfirmed?: boolean; // 模特方確認
-    photographerConfirmed?: boolean; // 攝影方確認
+    image?: string;
+    modelConfirmed?: boolean;
+    photographerConfirmed?: boolean;
     status?: "pending" | "confirmed";
   }[];
   checkInStatus: {
     modelCheckedIn: boolean;
     modelCheckInTime?: string;
     photographerCheckedIn: boolean;
+    photographerCheckInTime?: string;
   };
-  paymentStatus: "unpaid" | "reminded" | "paid";
+  paymentStatus: "unpaid" | "reminded" | "deposit_paid" | "paid";
   messages: {
     id: string;
     sender: "model" | "photographer";
@@ -41,45 +46,246 @@ export interface CollaborationProject {
     text: string;
     timestamp: string;
   }[];
+  paymentNotice?: {
+    bankName: string;
+    lastFiveDigits: string;
+    amount: number;
+    noticeTime: string;
+    isModelConfirmed: boolean;
+  };
+  revisionNotice?: {
+    requestCount: number;
+    notes: string;
+    noticeTime: string;
+  };
+  invoiceNotice?: {
+    invoiceType: "deposit" | "final";
+    amount: number;
+    noticeTime: string;
+  };
 }
 
+const DEFAULT_PROJECTS: CollaborationProject[] = [
+  {
+    id: "collab_1",
+    caseNumber: "INV-20261015-001",
+    category: "invite",
+    photographerName: "陳攝影 (Alan Chen)",
+    shootDate: "2026-10-18",
+    exactTime: "2026/10/18 (日) 13:50 集合",
+    exactLocation: "大稻埕碼頭 5 號水門貨櫃市集入口",
+    coordinates: "25.0569, 121.5074",
+    coopType: "邀約拍攝 (自費聘請)",
+    remuneration: "NT$ 6,000",
+    bankInfo: {
+      bankCode: "822",
+      bankName: "中國信託",
+      accountNumber: "1234-5678-9012",
+      accountName: "陳*晴",
+    },
+    outfits: [
+      {
+        id: "outfit_1",
+        title: "酒紅色刺繡旗袍",
+        description: "復古珍珠耳環、自備黑色摺扇與低跟鞋",
+        image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=400&q=80",
+        modelConfirmed: true,
+        photographerConfirmed: true,
+        status: "confirmed",
+      },
+    ],
+    checkInStatus: {
+      modelCheckedIn: true,
+      modelCheckInTime: "13:50",
+      photographerCheckedIn: false,
+    },
+    paymentStatus: "deposit_paid",
+    paymentNotice: {
+      bankName: "國泰世華 (013)",
+      lastFiveDigits: "88621",
+      amount: 3000,
+      noticeTime: "10-14 15:30",
+      isModelConfirmed: true,
+    },
+    messages: [
+      {
+        id: "m_1",
+        sender: "model",
+        senderName: "羽晴 (Hane)",
+        text: "陳攝影您好！已上傳這次挑選的旗袍參考照，再麻煩您確認光線與色調是否合適！",
+        timestamp: "14:20",
+      },
+      {
+        id: "m_2",
+        sender: "photographer",
+        senderName: "陳攝影 (Alan Chen)",
+        text: "看過照片了，暗紅絲絨質感非常符合當天迪化街老街景，當天我會自備暖色柔光罩！",
+        timestamp: "14:35",
+      },
+    ],
+  },
+  {
+    id: "collab_2",
+    caseNumber: "TFC-20261015-002",
+    category: "tfcd",
+    photographerName: "陳攝影 (Alan Chen)",
+    shootDate: "2026-10-24",
+    exactTime: "2026/10/24 (六) 09:50 集合",
+    exactLocation: "台北市立美術館正門戶外廣場",
+    coordinates: "25.0722, 121.5248",
+    coopType: "互惠拍攝 (TFCD)",
+    remuneration: "互惠免支付",
+    bankInfo: {
+      bankCode: "822",
+      bankName: "中國信託",
+      accountNumber: "1234-5678-9012",
+      accountName: "陳*晴",
+    },
+    outfits: [
+      {
+        id: "outfit_2",
+        title: "秋季長版風衣套裝",
+        description: "米白色大衣 + 棕色短靴，微風自然飄逸感",
+        modelConfirmed: true,
+        photographerConfirmed: false,
+        status: "pending",
+      },
+    ],
+    checkInStatus: {
+      modelCheckedIn: false,
+      photographerCheckedIn: false,
+    },
+    paymentStatus: "unpaid",
+    revisionNotice: {
+      requestCount: 1,
+      notes: "已將初剪毛片上傳雲端，精選 15 張調色為日系微光風，待確認後交付高畫質檔。",
+      noticeTime: "10-14 10:00",
+    },
+    messages: [],
+  },
+  {
+    id: "collab_3",
+    caseNumber: "COM-20261015-003",
+    category: "commercial",
+    photographerName: "陳攝影 (Alan Chen)",
+    shootDate: "2026-10-30",
+    exactTime: "2026/10/30 (五) 12:45 集合",
+    exactLocation: "松山文創園區 2 號倉庫前廣場",
+    coordinates: "25.0441, 121.5606",
+    coopType: "商案拍攝 (商業受託)",
+    remuneration: "NT$ 18,000",
+    bankInfo: {
+      bankCode: "822",
+      bankName: "中國信託",
+      accountNumber: "1234-5678-9012",
+      accountName: "陳*晴",
+    },
+    outfits: [
+      {
+        id: "outfit_3",
+        title: "韓系秋季針織新品共 6 套",
+        description: "品牌方自備服飾與搭配鞋帽",
+        image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=400&q=80",
+        modelConfirmed: true,
+        photographerConfirmed: true,
+        status: "confirmed",
+      },
+    ],
+    checkInStatus: {
+      modelCheckedIn: false,
+      photographerCheckedIn: false,
+    },
+    paymentStatus: "deposit_paid",
+    invoiceNotice: {
+      invoiceType: "deposit",
+      amount: 5400,
+      noticeTime: "10-13 11:20",
+    },
+    messages: [],
+  },
+];
+
 interface CollaborationTabProps {
-  collaborations: CollaborationProject[];
-  setCollaborations: React.Dispatch<React.SetStateAction<CollaborationProject[]>>;
-  currentModelName: string;
+  collaborations?: CollaborationProject[];
+  setCollaborations?: React.Dispatch<React.SetStateAction<CollaborationProject[]>>;
+  currentModelName?: string;
 }
 
 export default function CollaborationTab({
-  collaborations,
-  setCollaborations,
-  currentModelName,
+  currentModelName = "羽晴 (Hane)",
 }: CollaborationTabProps) {
-  const [activeCollabId, setActiveCollabId] = useState<string>(
-    collaborations[0]?.id || ""
-  );
+  const [collabList, setCollabList] = useState<CollaborationProject[]>(DEFAULT_PROJECTS);
+  const [selectedCategory, setSelectedCategory] = useState<"all" | CollabCategory>("all");
+  const [activeCollabId, setActiveCollabId] = useState<string>("");
   const [newMessage, setNewMessage] = useState("");
   const [newOutfitTitle, setNewOutfitTitle] = useState("");
   const [newOutfitDesc, setNewOutfitDesc] = useState("");
   const [newOutfitImage, setNewOutfitImage] = useState<string>("");
+  const [copiedCaseNum, setCopiedCaseNum] = useState<string | null>(null);
 
-  const activeProject = collaborations.find((c) => c.id === activeCollabId) || collaborations[0];
+  // 跨分頁與本地資料庫載入
+  const loadData = () => {
+    const saved = localStorage.getItem("lumina_collaboration_events");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCollabList(parsed);
+          if (!activeCollabId) setActiveCollabId(parsed[0].id);
+          return;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(DEFAULT_PROJECTS));
+    setActiveCollabId(DEFAULT_PROJECTS[0].id);
+  };
 
-  if (!activeProject) {
-    return (
-      <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-12 text-center space-y-3">
-        <span className="text-3xl">🤝</span>
-        <h3 className="text-sm font-bold text-stone-800">目前尚無已確認的履約中專案</h3>
-        <p className="text-xs text-stone-500 max-w-sm mx-auto">
-          當您在「📥 邀約審核抽屜」點選同意邀約後，該案件將自動建立專屬的「合作協作室」，供雙方確認服裝、收款資訊與即時留言！
-        </p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    loadData();
 
-  // 發送即時留言
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "lumina_collaboration_events" && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setCollabList(parsed);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  const saveToStorage = (updated: CollaborationProject[]) => {
+    setCollabList(updated);
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
+  };
+
+  const filteredCollabs = collabList.filter((c) => {
+    if (selectedCategory === "all") return true;
+    return c.category === selectedCategory;
+  });
+
+  const activeProject =
+    filteredCollabs.find((c) => c.id === activeCollabId) || filteredCollabs[0] || collabList[0];
+
+  const handleCopyCaseNumber = (caseNum?: string) => {
+    if (!caseNum) return;
+    navigator.clipboard.writeText(caseNum).then(() => {
+      setCopiedCaseNum(caseNum);
+      setTimeout(() => setCopiedCaseNum(null), 1800);
+    });
+  };
+
+  // 即時留言發送
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !activeProject) return;
 
     const msg = {
       id: `msg_${Date.now()}`,
@@ -89,203 +295,379 @@ export default function CollaborationTab({
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
-    setCollaborations((prev) =>
-      prev.map((c) =>
-        c.id === activeProject.id
-          ? { ...c, messages: [...c.messages, msg] }
-          : c
-      )
+    const updated = collabList.map((c) =>
+      c.id === activeProject.id ? { ...c, messages: [...(c.messages || []), msg] } : c
     );
+    saveToStorage(updated);
     setNewMessage("");
   };
 
-  // 處理上傳服裝參考圖片
+  // 服裝上傳與操作
   const handleOutfitImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      if (reader.result) {
-        setNewOutfitImage(reader.result as string);
-      }
+      if (reader.result) setNewOutfitImage(reader.result as string);
     };
     reader.readAsDataURL(file);
   };
 
-  // 新增準備服裝
   const handleAddOutfit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newOutfitTitle.trim()) return;
+    if (!newOutfitTitle.trim() || !activeProject) return;
 
     const outfit = {
       id: `outfit_${Date.now()}`,
       title: newOutfitTitle.trim(),
       description: newOutfitDesc.trim() || "自備服裝搭配",
       image: newOutfitImage || undefined,
-      modelConfirmed: true, // 模特親自新增預設自身已確認
+      modelConfirmed: true,
       photographerConfirmed: false,
       status: "pending" as const,
     };
 
-    setCollaborations((prev) =>
-      prev.map((c) =>
-        c.id === activeProject.id
-          ? { ...c, outfits: [...c.outfits, outfit] }
-          : c
-      )
+    const updated = collabList.map((c) =>
+      c.id === activeProject.id ? { ...c, outfits: [...(c.outfits || []), outfit] } : c
     );
+    saveToStorage(updated);
     setNewOutfitTitle("");
     setNewOutfitDesc("");
     setNewOutfitImage("");
   };
 
-  // 切換模特方的服裝確認狀態
   const handleToggleModelConfirm = (outfitId: string) => {
-    setCollaborations((prev) =>
-      prev.map((c) => {
-        if (c.id !== activeProject.id) return c;
-        const updatedOutfits = c.outfits.map((o) => {
-          if (o.id !== outfitId) return o;
-          const currentStatus = o.modelConfirmed ?? (o.status === "confirmed");
-          return {
-            ...o,
-            modelConfirmed: !currentStatus,
-          };
-        });
-        return { ...c, outfits: updatedOutfits };
-      })
-    );
+    if (!activeProject) return;
+    const updated = collabList.map((c) => {
+      if (c.id !== activeProject.id) return c;
+      const updatedOutfits = c.outfits.map((o) => {
+        if (o.id !== outfitId) return o;
+        const currentStatus = o.modelConfirmed ?? (o.status === "confirmed");
+        return { ...o, modelConfirmed: !currentStatus };
+      });
+      return { ...c, outfits: updatedOutfits };
+    });
+    saveToStorage(updated);
   };
 
-  // 刪除特定服裝項目
   const handleDeleteOutfit = (outfitId: string) => {
-    setCollaborations((prev) =>
-      prev.map((c) =>
-        c.id === activeProject.id
-          ? { ...c, outfits: c.outfits.filter((o) => o.id !== outfitId) }
-          : c
-      )
+    if (!activeProject) return;
+    const updated = collabList.map((c) =>
+      c.id === activeProject.id
+        ? { ...c, outfits: c.outfits.filter((o) => o.id !== outfitId) }
+        : c
     );
+    saveToStorage(updated);
   };
 
-  // 一鍵複製座標至剪貼簿
   const handleCopyCoordinates = () => {
-    const coords = activeProject.coordinates || "";
+    const coords = activeProject?.coordinates || "";
     if (!coords.trim()) {
-      alert("尚未填寫座標資訊！請先在輸入框輸入經緯度（例：25.0569, 121.5074）。");
+      alert("尚未填寫座標資訊！");
       return;
     }
-    navigator.clipboard.writeText(coords.trim()).then(
-      () => {
-        alert(`✓ 座標已成功複製到剪貼簿：${coords.trim()}\n可直接至 Google Maps 搜尋貼上！`);
-      },
-      () => {
-        alert("複製失敗，請手動反白複製。");
-      }
-    );
+    navigator.clipboard.writeText(coords.trim()).then(() => {
+      alert(`✓ 座標已複製：${coords.trim()}\n可直接至 Google Maps 搜尋貼上！`);
+    });
   };
 
-  // 直接在 Google Maps 開啟座標
   const handleOpenGoogleMaps = () => {
-    const coords = activeProject.coordinates?.trim() || activeProject.exactLocation.trim();
+    const coords = activeProject?.coordinates?.trim() || activeProject?.exactLocation?.trim();
     if (!coords) {
-      alert("尚未設定集合地點或座標！");
+      alert("尚未設定地點！");
       return;
     }
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coords)}`;
-    window.open(url, "_blank");
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coords)}`, "_blank");
   };
 
-  // 更新收款帳號
   const handleUpdateBank = (field: string, val: string) => {
-    setCollaborations((prev) =>
-      prev.map((c) =>
-        c.id === activeProject.id
-          ? { ...c, bankInfo: { ...c.bankInfo, [field]: val } }
-          : c
-      )
+    if (!activeProject) return;
+    const updated = collabList.map((c) =>
+      c.id === activeProject.id
+        ? { ...c, bankInfo: { ...c.bankInfo, [field]: val } }
+        : c
     );
+    saveToStorage(updated);
   };
 
-  // 現場安全簽到
   const handleModelCheckIn = () => {
+    if (!activeProject) return;
     const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    setCollaborations((prev) =>
-      prev.map((c) =>
-        c.id === activeProject.id
-          ? {
-              ...c,
-              checkInStatus: {
-                ...c.checkInStatus,
-                modelCheckedIn: true,
-                modelCheckInTime: timeStr,
-              },
-            }
-          : c
-      )
+    const updated = collabList.map((c) =>
+      c.id === activeProject.id
+        ? {
+            ...c,
+            checkInStatus: {
+              ...c.checkInStatus,
+              modelCheckedIn: true,
+              modelCheckInTime: timeStr,
+            },
+          }
+        : c
     );
-    alert(`📍 簽到成功！您已於 ${timeStr} 完成現場安全抵達簽到，系統已留存存證紀錄。`);
+    saveToStorage(updated);
+    alert(`📍 簽到成功！您已於 ${timeStr} 完成現場安全抵達簽到。`);
   };
 
-  // 發送提醒轉帳通知
-  const handleSendPaymentReminder = () => {
-    setCollaborations((prev) =>
-      prev.map((c) =>
-        c.id === activeProject.id
-          ? { ...c, paymentStatus: "reminded" as const }
-          : c
-      )
-    );
-    alert(`📢 轉帳提醒已正式送出！\n已通知攝影師【${activeProject.photographerName}】撥款轉帳至您的戶頭：\n銀行代碼：${activeProject.bankInfo.bankCode}\n帳號：${activeProject.bankInfo.accountNumber}`);
+  // 模特核帳確認入帳
+  const handleConfirmPaymentReceived = () => {
+    if (!activeProject) return;
+    const updated = collabList.map((c) => {
+      if (c.id === activeProject.id && c.paymentNotice) {
+        return {
+          ...c,
+          paymentNotice: {
+            ...c.paymentNotice,
+            isModelConfirmed: true,
+          },
+          paymentStatus: "paid" as const,
+        };
+      }
+      return c;
+    });
+    saveToStorage(updated);
+    alert("✅ 已確認款項入帳！系統已同步回報予攝影師。");
   };
+
+  const handleSendPaymentReminder = () => {
+    if (!activeProject) return;
+    const updated = collabList.map((c) =>
+      c.id === activeProject.id ? { ...c, paymentStatus: "reminded" as const } : c
+    );
+    saveToStorage(updated);
+    alert(`📢 轉帳提醒已送達攝影師【${activeProject.photographerName}】！`);
+  };
+
+  if (!activeProject) {
+    return (
+      <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-12 text-center space-y-3">
+        <span className="text-3xl">🤝</span>
+        <h3 className="text-sm font-bold text-stone-800">目前尚無已確認的履約中專案</h3>
+      </div>
+    );
+  }
+
+  const bothCheckedIn =
+    activeProject.checkInStatus?.modelCheckedIn &&
+    activeProject.checkInStatus?.photographerCheckedIn;
 
   return (
     <div className="space-y-6">
-      {/* 專案選擇分籤列 */}
+      {/* 頂部三大分類標籤列 */}
+      <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-stone-800 flex items-center gap-2">
+            <span>🤝</span>
+            <span>外拍履約協作室</span>
+          </h3>
+          <p className="text-xs text-stone-500 mt-0.5">
+            依三大合作性質分類管理：邀約拍攝（攝影付錢）、互惠拍攝（不收錢）、商案拍攝（專業商業行為）。
+          </p>
+        </div>
+
+        <div className="flex bg-[#edeae3] p-1 rounded-xl border border-stone-300 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setSelectedCategory("all")}
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              selectedCategory === "all" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            全部 ({collabList.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCategory("invite")}
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              selectedCategory === "invite" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            🎟️ 邀約拍攝
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCategory("tfcd")}
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              selectedCategory === "tfcd" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            🤝 互惠拍攝
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCategory("commercial")}
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              selectedCategory === "commercial" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            💼 商案拍攝
+          </button>
+        </div>
+      </div>
+
+      {/* 專案分籤列（帶有流水號標籤） */}
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {collaborations.map((collab) => (
+        {filteredCollabs.map((collab) => (
           <button
             key={collab.id}
             type="button"
             onClick={() => setActiveCollabId(collab.id)}
             className={`px-4 py-2 rounded-xl text-xs font-bold border transition shrink-0 cursor-pointer flex items-center gap-2 ${
-              activeCollabId === collab.id
+              activeProject.id === collab.id
                 ? "bg-stone-900 text-white border-stone-900 shadow-xs"
                 : "bg-white text-stone-700 border-stone-200 hover:bg-stone-50"
             }`}
           >
+            <span className="font-mono text-[10px] bg-stone-800 text-amber-300 px-1.5 py-0.5 rounded">
+              #{collab.caseNumber}
+            </span>
             <span>📷 {collab.photographerName}</span>
             <span className="text-[10px] opacity-75 font-mono">({collab.shootDate})</span>
           </button>
         ))}
       </div>
 
+      {/* 經典左二右一版面佈局 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 左側兩欄：案件履約重要細節 (收款帳號、時間地點、經緯度座標、現場簽到、服裝) */}
+        {/* 左側兩欄 */}
         <div className="lg:col-span-2 space-y-6">
-          {/* 1. 當日現場履約與催款控制板 */}
+          {/* 1. 當日現場履約與核銷狀態 */}
           <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex justify-between items-center border-b border-stone-200 pb-2">
-              <h3 className="text-sm font-bold text-stone-800 flex items-center gap-1.5">
-                <span>📍</span>
-                <span>當日現場履約與核銷狀態</span>
-              </h3>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
-                合作性質：{activeProject.coopType}
-              </span>
+            <div className="flex flex-wrap justify-between items-center border-b border-stone-200 pb-2 gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">📍</span>
+                <h3 className="text-sm font-bold text-stone-800">當日現場履約與核銷狀態</h3>
+                {activeProject.caseNumber && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopyCaseNumber(activeProject.caseNumber)}
+                    className="px-2 py-0.5 bg-stone-900 hover:bg-stone-800 text-amber-300 rounded text-[11px] font-mono font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                    title="點擊複製案件流水號"
+                  >
+                    <span>#{activeProject.caseNumber}</span>
+                    <span className="text-[10px] text-stone-300 ml-0.5">
+                      {copiedCaseNum === activeProject.caseNumber ? "✓ 已複製" : "📋"}
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {activeProject.category === "invite" && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    🎟️ 邀約拍攝 (攝影付錢)
+                  </span>
+                )}
+                {activeProject.category === "tfcd" && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    🤝 互惠拍攝 (不收錢)
+                  </span>
+                )}
+                {activeProject.category === "commercial" && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-300">
+                    💼 商案拍攝 (商業受聘)
+                  </span>
+                )}
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-stone-100 text-stone-600 border border-stone-200">
+                  {activeProject.remuneration || "互惠"}
+                </span>
+              </div>
             </div>
+
+            {/* 邀約拍攝專屬：攝影師匯款通報與核帳按鈕 */}
+            {activeProject.category === "invite" && activeProject.paymentNotice && (
+              <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-xs text-indigo-950">📢 攝影師通報匯款：</span>
+                      <span className="text-xs text-stone-700">{activeProject.paymentNotice.bankName}</span>
+                      <span className="font-mono text-xs bg-white px-2 py-0.5 rounded border border-indigo-200 font-bold text-indigo-700">
+                        末五碼：{activeProject.paymentNotice.lastFiveDigits}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      金額：NT$ {activeProject.paymentNotice.amount.toLocaleString()} ‧ 時間：{activeProject.paymentNotice.noticeTime}
+                    </p>
+                  </div>
+
+                  <div>
+                    {activeProject.paymentNotice.isModelConfirmed ? (
+                      <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold border border-emerald-300">
+                        ✓ 模特已確認入帳
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleConfirmPaymentReceived}
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-2xs"
+                      >
+                        ✓ 核帳無誤，確認入帳
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 互惠拍攝專屬：修圖通知備忘 */}
+            {activeProject.category === "tfcd" && activeProject.revisionNotice && (
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-emerald-900">
+                    🎨 最新修圖後製進度（第 {activeProject.revisionNotice.requestCount} 次更新）：
+                  </span>
+                  <span className="text-[10px] text-stone-400 font-mono">
+                    {activeProject.revisionNotice.noticeTime}
+                  </span>
+                </div>
+                <p className="text-stone-700 bg-white p-2 rounded border border-emerald-150">
+                  {activeProject.revisionNotice.notes}
+                </p>
+              </div>
+            )}
+
+            {/* 商案拍攝專屬：商業請款通報 */}
+            {activeProject.category === "commercial" && activeProject.invoiceNotice && (
+              <div className="p-3 bg-amber-50/70 border border-amber-300 rounded-xl text-xs flex justify-between items-center">
+                <div>
+                  <span className="font-bold text-amber-950">
+                    💼 攝影師已發送【{activeProject.invoiceNotice.invoiceType === "deposit" ? "30% 簽約定金" : "結案尾款"}】請款通報
+                  </span>
+                  <span className="text-stone-600 ml-2">
+                    (應付金額：NT$ {activeProject.invoiceNotice.amount.toLocaleString()})
+                  </span>
+                </div>
+                <span className="text-[10px] text-stone-400 font-mono">
+                  {activeProject.invoiceNotice.noticeTime}
+                </span>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* 安全抵達簽到 */}
               <div className="p-4 bg-white border border-stone-200 rounded-xl space-y-2.5">
-                <span className="text-xs font-bold text-stone-800 block">
-                  🛡️ 抵達拍攝地安全簽到
-                </span>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-stone-800">
+                    🛡️ 抵達拍攝地安全簽到
+                  </span>
+                  {bothCheckedIn && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      雙方皆已抵達
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-stone-500">
                   碰頭後請點擊簽到，作為防止放鳥（No-Show）爭議客觀存證依據。
                 </p>
-                {activeProject.checkInStatus.modelCheckedIn ? (
+
+                <div className="text-[11px] text-stone-500 space-y-0.5">
+                  <div>模特簽到：{activeProject.checkInStatus?.modelCheckedIn ? <strong className="text-emerald-700">✓ 已簽到 ({activeProject.checkInStatus.modelCheckInTime})</strong> : "未簽到"}</div>
+                  <div>攝影簽到：{activeProject.checkInStatus?.photographerCheckedIn ? <strong className="text-emerald-700">✓ 已簽到 ({activeProject.checkInStatus.photographerCheckInTime || "現場"})</strong> : "未簽到"}</div>
+                </div>
+
+                {activeProject.checkInStatus?.modelCheckedIn ? (
                   <div className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 p-2.5 rounded-lg flex items-center gap-1.5">
                     <span>✓ 您已於 {activeProject.checkInStatus.modelCheckInTime} 抵達簽到</span>
                   </div>
@@ -300,7 +682,7 @@ export default function CollaborationTab({
                 )}
               </div>
 
-              {/* 拍攝結束提醒催款 */}
+              {/* 提醒轉帳 */}
               <div className="p-4 bg-white border border-stone-200 rounded-xl space-y-2.5">
                 <span className="text-xs font-bold text-stone-800 block">
                   💸 拍攝完成提醒攝影師轉帳
@@ -308,21 +690,19 @@ export default function CollaborationTab({
                 <p className="text-[11px] text-stone-500">
                   拍攝結束若攝影師忘記付現或轉帳，可一鍵發送禮貌提醒通知。
                 </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSendPaymentReminder}
-                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition shadow-xs cursor-pointer ${
-                      activeProject.paymentStatus === "reminded"
-                        ? "bg-amber-600 hover:bg-amber-700 text-white"
-                        : "bg-indigo-600 hover:bg-indigo-700 text-white"
-                    }`}
-                  >
-                    {activeProject.paymentStatus === "reminded"
-                      ? "📢 已發送轉帳提醒 (可再次提醒)"
-                      : "📢 發送提醒轉帳通知"}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleSendPaymentReminder}
+                  className={`w-full py-2 rounded-lg text-xs font-bold transition shadow-xs cursor-pointer ${
+                    activeProject.paymentStatus === "reminded"
+                      ? "bg-amber-600 hover:bg-amber-700 text-white"
+                      : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                  }`}
+                >
+                  {activeProject.paymentStatus === "reminded"
+                    ? "📢 已發送轉帳提醒 (可再次提醒)"
+                    : "📢 發送提醒轉帳通知"}
+                </button>
               </div>
             </div>
           </div>
@@ -339,14 +719,14 @@ export default function CollaborationTab({
                 <label className="block text-xs font-bold text-stone-700 mb-1">準確約定時間點</label>
                 <input
                   type="text"
-                  value={activeProject.exactTime}
+                  value={activeProject.exactTime || ""}
                   onChange={(e) => {
                     const val = e.target.value;
-                    setCollaborations((prev) =>
-                      prev.map((c) => (c.id === activeProject.id ? { ...c, exactTime: val } : c))
+                    const updated = collabList.map((c) =>
+                      c.id === activeProject.id ? { ...c, exactTime: val } : c
                     );
+                    saveToStorage(updated);
                   }}
-                  placeholder="例：2026/10/28 (三) 13:50 集合"
                   className="w-full text-xs bg-white text-stone-800 border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 font-bold"
                 />
               </div>
@@ -355,20 +735,20 @@ export default function CollaborationTab({
                 <label className="block text-xs font-bold text-stone-700 mb-1">準確約拍集合地點</label>
                 <input
                   type="text"
-                  value={activeProject.exactLocation}
+                  value={activeProject.exactLocation || ""}
                   onChange={(e) => {
                     const val = e.target.value;
-                    setCollaborations((prev) =>
-                      prev.map((c) => (c.id === activeProject.id ? { ...c, exactLocation: val } : c))
+                    const updated = collabList.map((c) =>
+                      c.id === activeProject.id ? { ...c, exactLocation: val } : c
                     );
+                    saveToStorage(updated);
                   }}
-                  placeholder="例：大稻埕碼頭 5 號水門貨櫃市集入口"
                   className="w-full text-xs bg-white text-stone-800 border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 font-bold"
                 />
               </div>
             </div>
 
-            {/* 新增：GPS 經緯度座標設定與一鍵複製/開啟地圖 */}
+            {/* GPS 經緯度座標 */}
             <div className="p-3.5 bg-white border border-stone-200 rounded-xl space-y-2">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
@@ -380,19 +760,15 @@ export default function CollaborationTab({
                     type="button"
                     onClick={handleCopyCoordinates}
                     className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1"
-                    title="複製經緯度文字，可直接貼上至 Google 地圖"
                   >
-                    <span>📋</span>
-                    <span>一鍵複製座標</span>
+                    <span>📋 一鍵複製座標</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleOpenGoogleMaps}
                     className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1"
-                    title="直接於新分頁開啟 Google 地圖進行導航"
                   >
-                    <span>🧭</span>
-                    <span>開啟地圖</span>
+                    <span>🧭 開啟地圖</span>
                   </button>
                 </div>
               </div>
@@ -402,19 +778,17 @@ export default function CollaborationTab({
                 value={activeProject.coordinates || ""}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setCollaborations((prev) =>
-                    prev.map((c) => (c.id === activeProject.id ? { ...c, coordinates: val } : c))
+                  const updated = collabList.map((c) =>
+                    c.id === activeProject.id ? { ...c, coordinates: val } : c
                   );
+                  saveToStorage(updated);
                 }}
-                placeholder="輸入經緯度，例：25.0569, 121.5074 (或 Google Map 分享的座標格式)"
+                placeholder="輸入經緯度，例：25.0569, 121.5074"
                 className="w-full text-xs font-mono bg-[#fdfbf7] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
               />
-              <p className="text-[11px] text-stone-500">
-                提示：在 Google Maps 長按地點即可取得經緯度數字，貼上後雙方皆可一鍵複製並直接規劃路徑。
-              </p>
             </div>
 
-            {/* 收款帳號設定（提供攝影師匯款） */}
+            {/* 收款帳號設定 */}
             <div className="bg-[#f5f3ef] p-4 rounded-xl border border-stone-300 space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold text-stone-800">
@@ -428,21 +802,21 @@ export default function CollaborationTab({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <input
                   type="text"
-                  value={activeProject.bankInfo.bankCode}
+                  value={activeProject.bankInfo?.bankCode || ""}
                   onChange={(e) => handleUpdateBank("bankCode", e.target.value)}
                   placeholder="銀行代碼 (例: 822)"
                   className="text-xs bg-white text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
                 />
                 <input
                   type="text"
-                  value={activeProject.bankInfo.bankName}
+                  value={activeProject.bankInfo?.bankName || ""}
                   onChange={(e) => handleUpdateBank("bankName", e.target.value)}
                   placeholder="銀行名稱 (例: 中國信託)"
                   className="text-xs bg-white text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
                 />
                 <input
                   type="text"
-                  value={activeProject.bankInfo.accountName}
+                  value={activeProject.bankInfo?.accountName || ""}
                   onChange={(e) => handleUpdateBank("accountName", e.target.value)}
                   placeholder="戶名 (例: 陳*晴)"
                   className="text-xs bg-white text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
@@ -451,7 +825,7 @@ export default function CollaborationTab({
 
               <input
                 type="text"
-                value={activeProject.bankInfo.accountNumber}
+                value={activeProject.bankInfo?.accountNumber || ""}
                 onChange={(e) => handleUpdateBank("accountNumber", e.target.value)}
                 placeholder="銀行帳號 (例: 1234-5678-9012)"
                 className="w-full text-xs font-mono bg-white text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
@@ -466,21 +840,18 @@ export default function CollaborationTab({
                 <span>👗</span>
                 <span>約定服裝挑選與雙方確認清單</span>
               </h3>
-              <p className="text-xs text-stone-500 mt-0.5">
-                可上傳衣服款式參考照片，並由模特與攝影師雙方各自確認，確保現場造型認知一致。
-              </p>
             </div>
 
-            {/* 服裝列表 */}
             <div className="space-y-2.5">
-              {activeProject.outfits.length === 0 ? (
+              {(activeProject.outfits || []).length === 0 ? (
                 <div className="text-center py-6 text-xs text-stone-400 bg-white rounded-xl border border-dashed border-stone-300">
                   尚未新增任何拍攝服裝，請在下方填寫並上傳款式圖片！
                 </div>
               ) : (
                 activeProject.outfits.map((outfit) => {
                   const isModelOk = outfit.modelConfirmed ?? (outfit.status === "confirmed");
-                  const isPhotographerOk = outfit.photographerConfirmed ?? (outfit.status === "confirmed");
+                  const isPhotographerOk =
+                    outfit.photographerConfirmed ?? (outfit.status === "confirmed");
 
                   return (
                     <div
@@ -505,9 +876,7 @@ export default function CollaborationTab({
                         </div>
                       </div>
 
-                      {/* 雙方確認狀態標籤與操作 */}
                       <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
-                        {/* 模特端確認按鈕 */}
                         <button
                           type="button"
                           onClick={() => handleToggleModelConfirm(outfit.id)}
@@ -516,12 +885,10 @@ export default function CollaborationTab({
                               ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
                               : "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
                           }`}
-                          title="點擊切換您的確認狀態"
                         >
                           <span>{isModelOk ? "✓ 模特：已確認" : "⏳ 模特：待確認 (點擊確認)"}</span>
                         </button>
 
-                        {/* 攝影端確認狀態 */}
                         <span
                           className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
                             isPhotographerOk
@@ -532,12 +899,10 @@ export default function CollaborationTab({
                           {isPhotographerOk ? "✓ 攝影：已確認" : "⏳ 攝影：待確認"}
                         </span>
 
-                        {/* 刪除按鈕 */}
                         <button
                           type="button"
                           onClick={() => handleDeleteOutfit(outfit.id)}
                           className="text-stone-400 hover:text-rose-600 p-1 cursor-pointer transition text-xs"
-                          title="刪除此套服裝"
                         >
                           ✕
                         </button>
@@ -548,7 +913,6 @@ export default function CollaborationTab({
               )}
             </div>
 
-            {/* 新增服裝表單（含圖片上傳） */}
             <form onSubmit={handleAddOutfit} className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl space-y-3">
               <span className="text-xs font-bold text-stone-700 block">
                 + 新增約定服裝款式與參考圖
@@ -585,11 +949,7 @@ export default function CollaborationTab({
                   </label>
                   {newOutfitImage && (
                     <div className="flex items-center gap-1.5">
-                      <img
-                        src={newOutfitImage}
-                        alt="預覽款式圖"
-                        className="w-7 h-7 object-cover rounded border border-stone-300"
-                      />
+                      <img src={newOutfitImage} alt="預覽款式圖" className="w-7 h-7 object-cover rounded border border-stone-300" />
                       <button
                         type="button"
                         onClick={() => setNewOutfitImage("")}
@@ -612,8 +972,8 @@ export default function CollaborationTab({
           </div>
         </div>
 
-        {/* 右側一欄：與該攝影師的即時留言溝通板 */}
-        <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-5 shadow-sm flex flex-col h-[640px]">
+        {/* 右側一欄：案件即時留言溝通 */}
+        <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-5 shadow-sm flex flex-col h-[680px]">
           <div className="pb-3 border-b border-stone-200 flex justify-between items-center">
             <div>
               <h4 className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
@@ -627,31 +987,34 @@ export default function CollaborationTab({
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           </div>
 
-          {/* 訊息流視窗 */}
           <div className="flex-1 overflow-y-auto space-y-3 py-3 pr-1">
-            {activeProject.messages.map((m) => {
-              const isMe = m.sender === "model";
-              return (
-                <div
-                  key={m.id}
-                  className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
-                >
-                  <span className="text-[10px] text-stone-400 mb-0.5">{m.senderName} · {m.timestamp}</span>
-                  <div
-                    className={`p-3 rounded-2xl text-xs max-w-[85%] leading-relaxed ${
-                      isMe
-                        ? "bg-indigo-600 text-white rounded-tr-none shadow-xs"
-                        : "bg-white border border-stone-200 text-stone-800 rounded-tl-none shadow-2xs"
-                    }`}
-                  >
-                    {m.text}
+            {(!activeProject.messages || activeProject.messages.length === 0) ? (
+              <div className="text-center py-16 text-xs text-stone-400">
+                尚無留言紀錄，可在此與攝影師溝通當日細節。
+              </div>
+            ) : (
+              activeProject.messages.map((m) => {
+                const isMe = m.sender === "model";
+                return (
+                  <div key={m.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                    <span className="text-[10px] text-stone-400 mb-0.5">
+                      {m.senderName} · {m.timestamp}
+                    </span>
+                    <div
+                      className={`p-3 rounded-2xl text-xs max-w-[85%] leading-relaxed ${
+                        isMe
+                          ? "bg-indigo-600 text-white rounded-tr-none shadow-xs"
+                          : "bg-white border border-stone-200 text-stone-800 rounded-tl-none shadow-2xs"
+                      }`}
+                    >
+                      {m.text}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
-          {/* 留言發送列 */}
           <form onSubmit={handleSendMessage} className="pt-2 border-t border-stone-200 flex gap-2">
             <input
               type="text"

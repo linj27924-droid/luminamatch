@@ -5,9 +5,151 @@ import PhotographerProfileTab, { PhotographerSocialLinks } from "../../../compon
 import ProposalTemplateTab from "../../../components/dashboard-photographer/ProposalTemplateTab";
 import PhotographerReviewsTab, { PhotographerReceivedReview } from "../../../components/dashboard-photographer/PhotographerReviewsTab";
 import PhotographerRateCardTab, { RateCardRequestItem, ModelRateCardResponseItem } from "../../../components/dashboard-photographer/PhotographerRateCardTab";
+import CommercialContractTab, { DEFAULT_COMMERCIAL_CONTRACT } from "../../../components/dashboard-photographer/CommercialContractTab";
+import PhotographerCollaborationTab, { CollaborationProject } from "../../../components/dashboard-photographer/PhotographerCollaborationTab";
+
+const DEFAULT_PROJECTS: CollaborationProject[] = [
+  {
+    id: "collab_1",
+    caseNumber: "INV-20261015-001",
+    category: "invite",
+    modelName: "羽晴 (Hane)",
+    shootDate: "2026-10-18",
+    exactTime: "2026/10/18 (日) 13:50 集合",
+    exactLocation: "大稻埕碼頭 5 號水門貨櫃市集入口",
+    coordinates: "25.0569, 121.5074",
+    coopType: "邀約拍攝 (自費聘請)",
+    remuneration: "NT$ 6,000",
+    bankInfo: {
+      bankCode: "822",
+      bankName: "中國信託",
+      accountNumber: "1234-5678-9012",
+      accountName: "陳*晴",
+    },
+    outfits: [
+      {
+        id: "outfit_1",
+        title: "酒紅色刺繡旗袍",
+        description: "復古珍珠耳環、自備黑色摺扇與低跟鞋",
+        image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=400&q=80",
+        modelConfirmed: true,
+        photographerConfirmed: true,
+        status: "confirmed",
+      },
+    ],
+    checkInStatus: {
+      modelCheckedIn: true,
+      modelCheckInTime: "13:50",
+      photographerCheckedIn: false,
+    },
+    paymentStatus: "deposit_paid",
+    paymentNotice: {
+      bankName: "國泰世華 (013)",
+      lastFiveDigits: "88621",
+      amount: 3000,
+      noticeTime: "10-14 15:30",
+      isModelConfirmed: true,
+    },
+    messages: [
+      {
+        id: "m_1",
+        sender: "model",
+        senderName: "羽晴 (Hane)",
+        text: "陳攝影您好！已上傳這次挑選的旗袍參考照，再麻煩您確認光線與色調是否合適！",
+        timestamp: "14:20",
+      },
+      {
+        id: "m_2",
+        sender: "photographer",
+        senderName: "陳攝影 (Alan Chen)",
+        text: "看過照片了，暗紅絲絨質感非常符合當天迪化街老街景，當天我會自備暖色柔光罩！",
+        timestamp: "14:35",
+      },
+    ],
+  },
+  {
+    id: "collab_2",
+    caseNumber: "TFC-20261015-002",
+    category: "tfcd",
+    modelName: "米娜 (Mina)",
+    shootDate: "2026-10-24",
+    exactTime: "2026/10/24 (六) 09:50 集合",
+    exactLocation: "台北市立美術館正門戶外廣場",
+    coordinates: "25.0722, 121.5248",
+    coopType: "互惠拍攝 (TFCD)",
+    remuneration: "互惠免支付",
+    bankInfo: {
+      bankCode: "822",
+      bankName: "中國信託",
+      accountNumber: "1234-5678-9012",
+      accountName: "陳*晴",
+    },
+    outfits: [
+      {
+        id: "outfit_2",
+        title: "秋季長版風衣套裝",
+        description: "米白色大衣 + 棕色短靴，微風自然飄逸感",
+        modelConfirmed: true,
+        photographerConfirmed: false,
+        status: "pending",
+      },
+    ],
+    checkInStatus: {
+      modelCheckedIn: false,
+      photographerCheckedIn: false,
+    },
+    paymentStatus: "unpaid",
+    revisionNotice: {
+      requestCount: 1,
+      notes: "已將初剪毛片上傳雲端，精選 15 張調色為日系微光風，待確認後交付高畫質檔。",
+      noticeTime: "10-14 10:00",
+    },
+    messages: [],
+  },
+  {
+    id: "collab_3",
+    caseNumber: "COM-20261015-003",
+    category: "commercial",
+    modelName: "晴晴 (Ching)",
+    shootDate: "2026-10-30",
+    exactTime: "2026/10/30 (五) 12:45 集合",
+    exactLocation: "松山文創園區 2 號倉庫前廣場",
+    coordinates: "25.0441, 121.5606",
+    coopType: "商案拍攝 (商業受託)",
+    remuneration: "NT$ 18,000",
+    bankInfo: {
+      bankCode: "822",
+      bankName: "中國信託",
+      accountNumber: "1234-5678-9012",
+      accountName: "陳*晴",
+    },
+    outfits: [
+      {
+        id: "outfit_3",
+        title: "韓系秋季針織新品共 6 套",
+        description: "品牌方自備服飾與搭配鞋帽",
+        image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=400&q=80",
+        modelConfirmed: true,
+        photographerConfirmed: true,
+        status: "confirmed",
+      },
+    ],
+    checkInStatus: {
+      modelCheckedIn: false,
+      photographerCheckedIn: false,
+    },
+    paymentStatus: "deposit_paid",
+    invoiceNotice: {
+      invoiceType: "deposit",
+      amount: 5400,
+      noticeTime: "10-13 11:20",
+    },
+    messages: [],
+  },
+];
 
 export default function PhotographerDashboardPage() {
-  const [activeTab, setActiveTab] = useState<"profile" | "rate_card" | "template" | "reviews">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "rate_card" | "collab" | "contract" | "template" | "reviews">("profile");
 
   const [photographerProfile, setPhotographerProfile] = useState({
     name: "陳攝影 (Alan Chen)",
@@ -28,7 +170,6 @@ export default function PhotographerDashboardPage() {
     coopMode: "互惠/商案皆可",
   });
 
-  // 5 組公開社群連結狀態（直接對齊前台主頁）
   const [socialLinks, setSocialLinks] = useState<PhotographerSocialLinks>({
     instagram: "https://instagram.com/alan_photostudio",
     facebook: "https://facebook.com/alan.chen.visual",
@@ -42,13 +183,11 @@ export default function PhotographerDashboardPage() {
   const [styles, setStyles] = useState(["日系膠卷清新", "俐落時裝街拍", "自然光人像"]);
   const [newStyleInput, setNewStyleInput] = useState("");
 
-  // 攝影師報價單圖片與設定
   const [rateCardImages, setRateCardImages] = useState<string[]>([
     "https://images.unsplash.com/photo-1554415707-9e4466bfe03b?auto=format&fit=crop&w=800&q=80",
   ]);
   const [rateCardAccessMode, setRateCardAccessMode] = useState<"auto" | "require_approval">("require_approval");
 
-  // 收到的索取清單
   const [incomingRequests, setIncomingRequests] = useState<RateCardRequestItem[]>([
     {
       id: "req_m1",
@@ -68,7 +207,6 @@ export default function PhotographerDashboardPage() {
     },
   ]);
 
-  // 我向模特申請過的回應清單
   const [outgoingRequests, setOutgoingRequests] = useState<ModelRateCardResponseItem[]>([
     {
       id: "out_1",
@@ -86,6 +224,13 @@ export default function PhotographerDashboardPage() {
       status: "pending",
     },
   ]);
+
+  const [contractTitle, setContractTitle] = useState("標準商業攝影委託暨肖像授權合約");
+  const [contractBody, setContractBody] = useState(DEFAULT_COMMERCIAL_CONTRACT);
+  const [depositRate, setDepositRate] = useState("30%");
+  const [revisionLimit, setRevisionLimit] = useState(2);
+
+  const [collabEvents, setCollabEvents] = useState<CollaborationProject[]>(DEFAULT_PROJECTS);
 
   const [proposalTemplate, setProposalTemplate] = useState({
     defaultStyle: "日系膠卷清新街拍",
@@ -105,17 +250,28 @@ export default function PhotographerDashboardPage() {
     },
   ]);
 
+  const reloadCollabEvents = () => {
+    const savedCollabs = localStorage.getItem("lumina_collaboration_events");
+    if (savedCollabs) {
+      try {
+        const parsed = JSON.parse(savedCollabs);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCollabEvents(parsed);
+          return;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(DEFAULT_PROJECTS));
+  };
+
   useEffect(() => {
     const saved = localStorage.getItem("lumina_photographer_profile_data");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.photographerProfile) {
-          setPhotographerProfile((prev) => ({
-            ...prev,
-            ...parsed.photographerProfile,
-          }));
-        }
+        if (parsed.photographerProfile) setPhotographerProfile((prev) => ({ ...prev, ...parsed.photographerProfile }));
         if (parsed.socialLinks) setSocialLinks(parsed.socialLinks);
         if (parsed.styles) setStyles(parsed.styles);
         if (parsed.proposalTemplate) setProposalTemplate(parsed.proposalTemplate);
@@ -123,10 +279,24 @@ export default function PhotographerDashboardPage() {
         if (parsed.rateCardAccessMode) setRateCardAccessMode(parsed.rateCardAccessMode);
         if (parsed.incomingRequests) setIncomingRequests(parsed.incomingRequests);
         if (parsed.outgoingRequests) setOutgoingRequests(parsed.outgoingRequests);
+        if (parsed.contractTitle) setContractTitle(parsed.contractTitle);
+        if (parsed.contractBody) setContractBody(parsed.contractBody);
+        if (parsed.depositRate) setDepositRate(parsed.depositRate);
+        if (parsed.revisionLimit !== undefined) setRevisionLimit(parsed.revisionLimit);
       } catch (e) {
         console.error(e);
       }
     }
+
+    reloadCollabEvents();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "lumina_collaboration_events") {
+        reloadCollabEvents();
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   const handleAddStyle = (e: React.FormEvent) => {
@@ -148,6 +318,10 @@ export default function PhotographerDashboardPage() {
       rateCardAccessMode,
       incomingRequests,
       outgoingRequests,
+      contractTitle,
+      contractBody,
+      depositRate,
+      revisionLimit,
       ...partial,
     };
     localStorage.setItem("lumina_photographer_profile_data", JSON.stringify(dataToSave));
@@ -156,13 +330,170 @@ export default function PhotographerDashboardPage() {
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     saveAllData({ photographerProfile, socialLinks });
-    alert("✅ 攝影師檔案（含社群連結與代表作）已成功儲存！");
+
+    const updatedEvents = collabEvents.map((evt) => {
+      const updatedMessages = evt.messages?.map((m) =>
+        m.sender === "photographer" ? { ...m, senderName: photographerProfile.name } : m
+      );
+      return { ...evt, messages: updatedMessages };
+    });
+    setCollabEvents(updatedEvents);
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(updatedEvents));
+
+    alert(`✅ 攝影師檔案已儲存！所有專案已同步更新為：【${photographerProfile.name}】！`);
   };
 
   const handleSaveRateCardConfig = (e: React.FormEvent) => {
     e.preventDefault();
     saveAllData({});
     alert("✅ 攝影報價單與權限設定已成功儲存！");
+  };
+
+  const handleSaveContract = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveAllData({ contractTitle, contractBody, depositRate, revisionLimit });
+    alert("✅ 商案制式合約書範本已成功儲存！");
+  };
+
+  // 服裝確認
+  const handleToggleOutfitApproval = (eventId: string, outfitId: string) => {
+    const updated = collabEvents.map((evt) => {
+      if (evt.id !== eventId) return evt;
+      const updatedOutfits = evt.outfits.map((o) => {
+        if (o.id !== outfitId) return o;
+        const current = o.photographerConfirmed ?? (o.status === "confirmed");
+        return { ...o, photographerConfirmed: !current };
+      });
+      return { ...evt, outfits: updatedOutfits };
+    });
+    setCollabEvents(updated);
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
+  };
+
+  const handleAddOutfit = (eventId: string, title: string, desc: string, img?: string) => {
+    const outfit = {
+      id: `outfit_${Date.now()}`,
+      title,
+      description: desc || "攝影自備或建議搭配",
+      image: img,
+      modelConfirmed: false,
+      photographerConfirmed: true,
+      status: "pending" as const,
+    };
+
+    const updated = collabEvents.map((c) =>
+      c.id === eventId ? { ...c, outfits: [...(c.outfits || []), outfit] } : c
+    );
+    setCollabEvents(updated);
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
+  };
+
+  const handleDeleteOutfit = (eventId: string, outfitId: string) => {
+    const updated = collabEvents.map((c) =>
+      c.id === eventId ? { ...c, outfits: c.outfits.filter((o) => o.id !== outfitId) } : c
+    );
+    setCollabEvents(updated);
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
+  };
+
+  const handlePhotographerCheckIn = (eventId: string) => {
+    const nowTime = new Date().toTimeString().slice(0, 5);
+    const updated = collabEvents.map((evt) =>
+      evt.id === eventId
+        ? {
+            ...evt,
+            checkInStatus: {
+              ...evt.checkInStatus,
+              photographerCheckedIn: true,
+              photographerCheckInTime: nowTime,
+            },
+          }
+        : evt
+    );
+    setCollabEvents(updated);
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
+    alert(`📍 簽到成功！攝影師抵達時間：${nowTime}。`);
+  };
+
+  const handleSendMessage = (eventId: string, text: string) => {
+    const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const newMsg = {
+      id: `msg_${Date.now()}`,
+      sender: "photographer" as const,
+      senderName: photographerProfile.name,
+      text,
+      timestamp: nowStr,
+    };
+
+    const updated = collabEvents.map((evt) =>
+      evt.id === eventId ? { ...evt, messages: [...(evt.messages || []), newMsg] } : evt
+    );
+    setCollabEvents(updated);
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
+  };
+
+  const handleSendPaymentNotice = (eventId: string, bank: string, lastFive: string, amount: number) => {
+    const nowTime = new Date().toISOString().slice(5, 16).replace("T", " ");
+    const updated = collabEvents.map((evt) => {
+      if (evt.id === eventId) {
+        return {
+          ...evt,
+          paymentNotice: {
+            bankName: bank,
+            lastFiveDigits: lastFive,
+            amount,
+            noticeTime: nowTime,
+            isModelConfirmed: false,
+          },
+          paymentStatus: "deposit_paid" as const,
+        };
+      }
+      return evt;
+    });
+    setCollabEvents(updated);
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
+    alert(`✅ 匯款通知已送達模特！\n銀行：${bank}\n末五碼：${lastFive}\n金額：NT$ ${amount}`);
+  };
+
+  const handleSendRevisionNotice = (eventId: string, notes: string) => {
+    const nowTime = new Date().toISOString().slice(5, 16).replace("T", " ");
+    const updated = collabEvents.map((evt) => {
+      if (evt.id === eventId) {
+        const prevCount = evt.revisionNotice?.requestCount || 0;
+        return {
+          ...evt,
+          revisionNotice: {
+            requestCount: prevCount + 1,
+            notes,
+            noticeTime: nowTime,
+          },
+        };
+      }
+      return evt;
+    });
+    setCollabEvents(updated);
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
+    alert("✅ 照片調色／修改進度已通知模特！");
+  };
+
+  const handleSendInvoiceNotice = (eventId: string, type: "deposit" | "final", amount: number) => {
+    const nowTime = new Date().toISOString().slice(5, 16).replace("T", " ");
+    const updated = collabEvents.map((evt) => {
+      if (evt.id === eventId) {
+        return {
+          ...evt,
+          invoiceNotice: {
+            invoiceType: type,
+            amount,
+            noticeTime: nowTime,
+          },
+        };
+      }
+      return evt;
+    });
+    setCollabEvents(updated);
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
+    alert(`✅ 已送出【${type === "deposit" ? "30% 簽約定金" : "結案尾款"}】請款通知（NT$ ${amount}）！`);
   };
 
   const handleApproveRequest = (id: string, durationHours: number = 168) => {
@@ -185,7 +516,7 @@ export default function PhotographerDashboardPage() {
 
   const handleRevokeRequest = (id: string) => {
     const target = incomingRequests.find((r) => r.id === id);
-    const confirmRevoke = window.confirm(`確定要收回「${target?.applicantName}」的報價單查閱授權嗎？對方將立即無法再查看。`);
+    const confirmRevoke = window.confirm(`確定要收回「${target?.applicantName}」的報價單查閱授權嗎？`);
     if (!confirmRevoke) return;
 
     const updated = incomingRequests.map((r) =>
@@ -213,22 +544,16 @@ export default function PhotographerDashboardPage() {
   return (
     <main className="min-h-[calc(100vh-65px)] bg-stone-100/70 px-4 py-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* 後台標頭與分頁按鈕 */}
         <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-xl font-bold text-stone-800">攝影工作室後台</h2>
-            <p className="text-xs text-stone-500 mt-1">
-              管理個人檔案、商案報價單、約拍提案範本與同業信譽紀錄
-            </p>
           </div>
 
           <div className="flex flex-wrap bg-[#edeae3]/80 p-1 rounded-xl border border-stone-300">
             <button
               onClick={() => setActiveTab("profile")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                activeTab === "profile"
-                  ? "bg-white text-indigo-700 shadow-xs"
-                  : "text-stone-600 hover:text-stone-900"
+                activeTab === "profile" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
               }`}
             >
               📷 攝影師檔案
@@ -236,9 +561,7 @@ export default function PhotographerDashboardPage() {
             <button
               onClick={() => setActiveTab("rate_card")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                activeTab === "rate_card"
-                  ? "bg-white text-indigo-700 shadow-xs"
-                  : "text-stone-600 hover:text-stone-900"
+                activeTab === "rate_card" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
               }`}
             >
               <span>💳 報價單管理</span>
@@ -249,11 +572,26 @@ export default function PhotographerDashboardPage() {
               )}
             </button>
             <button
+              onClick={() => setActiveTab("collab")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                activeTab === "collab" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <span>🤝 履約協作</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            </button>
+            <button
+              onClick={() => setActiveTab("contract")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                activeTab === "contract" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              📜 商案合約
+            </button>
+            <button
               onClick={() => setActiveTab("template")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                activeTab === "template"
-                  ? "bg-white text-indigo-700 shadow-xs"
-                  : "text-stone-600 hover:text-stone-900"
+                activeTab === "template" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
               }`}
             >
               📝 預設提案範本
@@ -261,9 +599,7 @@ export default function PhotographerDashboardPage() {
             <button
               onClick={() => setActiveTab("reviews")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                activeTab === "reviews"
-                  ? "bg-white text-indigo-700 shadow-xs"
-                  : "text-stone-600 hover:text-stone-900"
+                activeTab === "reviews" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
               }`}
             >
               🛡️ 模特評價手札
@@ -271,7 +607,6 @@ export default function PhotographerDashboardPage() {
           </div>
         </div>
 
-        {/* 依分頁載入零件 */}
         {activeTab === "profile" && (
           <PhotographerProfileTab
             photographerProfile={photographerProfile}
@@ -300,6 +635,35 @@ export default function PhotographerDashboardPage() {
             handleDeleteIncomingRequest={handleDeleteIncomingRequest}
             outgoingRequests={outgoingRequests}
             handleSaveRateCardConfig={handleSaveRateCardConfig}
+          />
+        )}
+
+        {/* 履約協作分頁 */}
+        {activeTab === "collab" && (
+          <PhotographerCollaborationTab
+            events={collabEvents}
+            handleToggleOutfitApproval={handleToggleOutfitApproval}
+            handleAddOutfit={handleAddOutfit}
+            handleDeleteOutfit={handleDeleteOutfit}
+            handlePhotographerCheckIn={handlePhotographerCheckIn}
+            handleSendMessage={handleSendMessage}
+            handleSendPaymentNotice={handleSendPaymentNotice}
+            handleSendRevisionNotice={handleSendRevisionNotice}
+            handleSendInvoiceNotice={handleSendInvoiceNotice}
+          />
+        )}
+
+        {activeTab === "contract" && (
+          <CommercialContractTab
+            contractTitle={contractTitle}
+            setContractTitle={setContractTitle}
+            contractBody={contractBody}
+            setContractBody={setContractBody}
+            depositRate={depositRate}
+            setDepositRate={setDepositRate}
+            revisionLimit={revisionLimit}
+            setRevisionLimit={setRevisionLimit}
+            handleSaveContract={handleSaveContract}
           />
         )}
 
