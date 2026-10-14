@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata = {
   title: "LuminaMatch - 模特與攝影師約拍存證媒合平台",
-  description: "專業人像外拍媒合、雙向電子存證與檔期管理平台",
+  description: "專業人像外拍媒合、無痛電子合約與通訊存證管理平台",
 };
 
 export default function RootLayout({

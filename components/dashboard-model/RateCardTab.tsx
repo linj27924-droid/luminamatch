@@ -129,7 +129,7 @@ export default function RateCardTab({
               <span>商業報價單管理模組 (含時效授權與防偽浮水印)</span>
             </h3>
             <p className="text-xs text-stone-500 mt-0.5">
-              可上傳最多 2 張長條直式報價單，並可限制攝影師查閱時效（如 24 小時），逾期自動關閉保護商案報價。
+              可上傳最多 2 張長條直式報價單，並可限制攝影師查閱時效（如 7 天、30 天或 3 個月），逾期自動關閉保護商案報價。
             </p>
           </div>
 
@@ -228,7 +228,7 @@ export default function RateCardTab({
                   <span className="text-xs font-bold">📩 通知模特，審核時效後才顯示</span>
                 </div>
                 <p className="text-[11px] text-stone-500 pl-5">
-                  發起索取後，由您在下方選擇給予「24小時」或「3天」時效，保障報價不外流。
+                  發起索取後，由您在下方選擇給予「7天」、「30天」或「3個月」時效，保障報價不外流。
                 </p>
               </label>
             </div>
@@ -337,20 +337,27 @@ export default function RateCardTab({
             <span className="text-xs font-bold text-indigo-950">
               ⚡ 批量時效授權：
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => handleBatchApprove(24)}
+                onClick={() => handleBatchApprove(168)}
                 className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition cursor-pointer"
               >
-                ✓ 授權 24 小時
+                ✓ 授權 7 天
               </button>
               <button
                 type="button"
-                onClick={() => handleBatchApprove(72)}
+                onClick={() => handleBatchApprove(720)}
                 className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition cursor-pointer"
               >
-                ✓ 授權 3 天
+                ✓ 授權 30 天
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBatchApprove(2160)}
+                className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold transition cursor-pointer"
+              >
+                ✓ 授權 3 個月
               </button>
               <button
                 type="button"
@@ -423,22 +430,29 @@ export default function RateCardTab({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {req.status === "pending" && (
                       <>
                         <button
                           type="button"
-                          onClick={() => handleApproveRequest(req.id, 24)}
+                          onClick={() => handleApproveRequest(req.id, 168)}
                           className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition cursor-pointer"
                         >
-                          ✓ 授權24小時
+                          ✓ 授權7天
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleApproveRequest(req.id, 72)}
+                          onClick={() => handleApproveRequest(req.id, 720)}
                           className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition cursor-pointer"
                         >
-                          ✓ 授權3天
+                          ✓ 授權30天
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleApproveRequest(req.id, 2160)}
+                          className="px-2.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold transition cursor-pointer"
+                        >
+                          ✓ 授權3個月
                         </button>
                       </>
                     )}

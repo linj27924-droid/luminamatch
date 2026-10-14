@@ -9,6 +9,7 @@ export interface CollaborationProject {
   shootDate: string;
   exactTime: string;
   exactLocation: string;
+  coordinates?: string; // GPS 經緯度座標 (例如: 25.0569, 121.5074)
   locationGuide: string;
   coopType: string;
   remuneration?: string;
@@ -22,7 +23,10 @@ export interface CollaborationProject {
     id: string;
     title: string;
     description: string;
-    status: "pending" | "confirmed";
+    image?: string; // 上傳服裝款式參考圖
+    modelConfirmed?: boolean; // 模特方確認
+    photographerConfirmed?: boolean; // 攝影方確認
+    status?: "pending" | "confirmed";
   }[];
   checkInStatus: {
     modelCheckedIn: boolean;
@@ -56,6 +60,7 @@ export default function CollaborationTab({
   const [newMessage, setNewMessage] = useState("");
   const [newOutfitTitle, setNewOutfitTitle] = useState("");
   const [newOutfitDesc, setNewOutfitDesc] = useState("");
+  const [newOutfitImage, setNewOutfitImage] = useState<string>("");
 
   const activeProject = collaborations.find((c) => c.id === activeCollabId) || collaborations[0];
 
@@ -94,6 +99,20 @@ export default function CollaborationTab({
     setNewMessage("");
   };
 
+  // 處理上傳服裝參考圖片
+  const handleOutfitImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (reader.result) {
+        setNewOutfitImage(reader.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   // 新增準備服裝
   const handleAddOutfit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +122,9 @@ export default function CollaborationTab({
       id: `outfit_${Date.now()}`,
       title: newOutfitTitle.trim(),
       description: newOutfitDesc.trim() || "自備服裝搭配",
+      image: newOutfitImage || undefined,
+      modelConfirmed: true, // 模特親自新增預設自身已確認
+      photographerConfirmed: false,
       status: "pending" as const,
     };
 
@@ -115,6 +137,64 @@ export default function CollaborationTab({
     );
     setNewOutfitTitle("");
     setNewOutfitDesc("");
+    setNewOutfitImage("");
+  };
+
+  // 切換模特方的服裝確認狀態
+  const handleToggleModelConfirm = (outfitId: string) => {
+    setCollaborations((prev) =>
+      prev.map((c) => {
+        if (c.id !== activeProject.id) return c;
+        const updatedOutfits = c.outfits.map((o) => {
+          if (o.id !== outfitId) return o;
+          const currentStatus = o.modelConfirmed ?? (o.status === "confirmed");
+          return {
+            ...o,
+            modelConfirmed: !currentStatus,
+          };
+        });
+        return { ...c, outfits: updatedOutfits };
+      })
+    );
+  };
+
+  // 刪除特定服裝項目
+  const handleDeleteOutfit = (outfitId: string) => {
+    setCollaborations((prev) =>
+      prev.map((c) =>
+        c.id === activeProject.id
+          ? { ...c, outfits: c.outfits.filter((o) => o.id !== outfitId) }
+          : c
+      )
+    );
+  };
+
+  // 一鍵複製座標至剪貼簿
+  const handleCopyCoordinates = () => {
+    const coords = activeProject.coordinates || "";
+    if (!coords.trim()) {
+      alert("尚未填寫座標資訊！請先在輸入框輸入經緯度（例：25.0569, 121.5074）。");
+      return;
+    }
+    navigator.clipboard.writeText(coords.trim()).then(
+      () => {
+        alert(`✓ 座標已成功複製到剪貼簿：${coords.trim()}\n可直接至 Google Maps 搜尋貼上！`);
+      },
+      () => {
+        alert("複製失敗，請手動反白複製。");
+      }
+    );
+  };
+
+  // 直接在 Google Maps 開啟座標
+  const handleOpenGoogleMaps = () => {
+    const coords = activeProject.coordinates?.trim() || activeProject.exactLocation.trim();
+    if (!coords) {
+      alert("尚未設定集合地點或座標！");
+      return;
+    }
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coords)}`;
+    window.open(url, "_blank");
   };
 
   // 更新收款帳號
@@ -182,7 +262,7 @@ export default function CollaborationTab({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 左側兩欄：案件履約重要細節 (收款帳號、時間地點、現場簽到、服裝) */}
+        {/* 左側兩欄：案件履約重要細節 (收款帳號、時間地點、經緯度座標、現場簽到、服裝) */}
         <div className="lg:col-span-2 space-y-6">
           {/* 1. 當日現場履約與催款控制板 */}
           <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
@@ -247,7 +327,7 @@ export default function CollaborationTab({
             </div>
           </div>
 
-          {/* 2. 精確時間、地點與模特收款帳號 */}
+          {/* 2. 精確時間、地點、GPS經緯度座標與模特收款帳號 */}
           <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-5">
             <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200 pb-2 flex items-center gap-1.5">
               <span>💳</span>
@@ -286,6 +366,52 @@ export default function CollaborationTab({
                   className="w-full text-xs bg-white text-stone-800 border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 font-bold"
                 />
               </div>
+            </div>
+
+            {/* 新增：GPS 經緯度座標設定與一鍵複製/開啟地圖 */}
+            <div className="p-3.5 bg-white border border-stone-200 rounded-xl space-y-2">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                  <span>🗺️</span>
+                  <span>精確 GPS 經緯度座標 (供 Google Map 精準導航防迷路)：</span>
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleCopyCoordinates}
+                    className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                    title="複製經緯度文字，可直接貼上至 Google 地圖"
+                  >
+                    <span>📋</span>
+                    <span>一鍵複製座標</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenGoogleMaps}
+                    className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                    title="直接於新分頁開啟 Google 地圖進行導航"
+                  >
+                    <span>🧭</span>
+                    <span>開啟地圖</span>
+                  </button>
+                </div>
+              </div>
+
+              <input
+                type="text"
+                value={activeProject.coordinates || ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCollaborations((prev) =>
+                    prev.map((c) => (c.id === activeProject.id ? { ...c, coordinates: val } : c))
+                  );
+                }}
+                placeholder="輸入經緯度，例：25.0569, 121.5074 (或 Google Map 分享的座標格式)"
+                className="w-full text-xs font-mono bg-[#fdfbf7] text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
+              />
+              <p className="text-[11px] text-stone-500">
+                提示：在 Google Maps 長按地點即可取得經緯度數字，貼上後雙方皆可一鍵複製並直接規劃路徑。
+              </p>
             </div>
 
             {/* 收款帳號設定（提供攝影師匯款） */}
@@ -333,51 +459,155 @@ export default function CollaborationTab({
             </div>
           </div>
 
-          {/* 3. 拍攝服裝挑選與確認清單 */}
+          {/* 3. 拍攝服裝挑選、上傳款式圖與雙方確認清單 */}
           <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200 pb-2 flex items-center gap-1.5">
-              <span>👗</span>
-              <span>約定服裝挑選與確認清單</span>
-            </h3>
-
-            <div className="space-y-2">
-              {activeProject.outfits.map((outfit) => (
-                <div
-                  key={outfit.id}
-                  className="p-3 bg-white border border-stone-200 rounded-xl flex justify-between items-center text-xs shadow-2xs"
-                >
-                  <div>
-                    <span className="font-bold text-stone-800">{outfit.title}</span>
-                    <p className="text-[11px] text-stone-500">{outfit.description}</p>
-                  </div>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                    ✓ 雙方已確認套裝
-                  </span>
-                </div>
-              ))}
+            <div className="border-b border-stone-200 pb-2">
+              <h3 className="text-sm font-bold text-stone-800 flex items-center gap-1.5">
+                <span>👗</span>
+                <span>約定服裝挑選與雙方確認清單</span>
+              </h3>
+              <p className="text-xs text-stone-500 mt-0.5">
+                可上傳衣服款式參考照片，並由模特與攝影師雙方各自確認，確保現場造型認知一致。
+              </p>
             </div>
 
-            <form onSubmit={handleAddOutfit} className="flex gap-2 pt-1">
-              <input
-                type="text"
-                value={newOutfitTitle}
-                onChange={(e) => setNewOutfitTitle(e.target.value)}
-                placeholder="套裝名稱 (例: 白色細肩碎花洋裝)"
-                className="flex-1 text-xs bg-white border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
-              />
-              <input
-                type="text"
-                value={newOutfitDesc}
-                onChange={(e) => setNewOutfitDesc(e.target.value)}
-                placeholder="備註 (例: 自備草帽與低跟鞋)"
-                className="flex-1 text-xs bg-white border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
-              />
-              <button
-                type="submit"
-                className="px-3.5 py-2 bg-stone-800 hover:bg-stone-900 text-white rounded-lg text-xs font-bold transition shrink-0 cursor-pointer"
-              >
-                + 新增服裝
-              </button>
+            {/* 服裝列表 */}
+            <div className="space-y-2.5">
+              {activeProject.outfits.length === 0 ? (
+                <div className="text-center py-6 text-xs text-stone-400 bg-white rounded-xl border border-dashed border-stone-300">
+                  尚未新增任何拍攝服裝，請在下方填寫並上傳款式圖片！
+                </div>
+              ) : (
+                activeProject.outfits.map((outfit) => {
+                  const isModelOk = outfit.modelConfirmed ?? (outfit.status === "confirmed");
+                  const isPhotographerOk = outfit.photographerConfirmed ?? (outfit.status === "confirmed");
+
+                  return (
+                    <div
+                      key={outfit.id}
+                      className="p-3.5 bg-white border border-stone-200 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs shadow-2xs"
+                    >
+                      <div className="flex items-center gap-3">
+                        {outfit.image ? (
+                          <img
+                            src={outfit.image}
+                            alt={outfit.title}
+                            className="w-14 h-14 object-cover rounded-lg border border-stone-200 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-14 h-14 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center text-lg text-stone-400 shrink-0">
+                            👗
+                          </div>
+                        )}
+                        <div>
+                          <span className="font-bold text-stone-800 text-sm block">{outfit.title}</span>
+                          <p className="text-[11px] text-stone-500 mt-0.5">{outfit.description}</p>
+                        </div>
+                      </div>
+
+                      {/* 雙方確認狀態標籤與操作 */}
+                      <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
+                        {/* 模特端確認按鈕 */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleModelConfirm(outfit.id)}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
+                            isModelOk
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                              : "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
+                          }`}
+                          title="點擊切換您的確認狀態"
+                        >
+                          <span>{isModelOk ? "✓ 模特：已確認" : "⏳ 模特：待確認 (點擊確認)"}</span>
+                        </button>
+
+                        {/* 攝影端確認狀態 */}
+                        <span
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
+                            isPhotographerOk
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                              : "bg-stone-100 text-stone-600 border-stone-300"
+                          }`}
+                        >
+                          {isPhotographerOk ? "✓ 攝影：已確認" : "⏳ 攝影：待確認"}
+                        </span>
+
+                        {/* 刪除按鈕 */}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOutfit(outfit.id)}
+                          className="text-stone-400 hover:text-rose-600 p-1 cursor-pointer transition text-xs"
+                          title="刪除此套服裝"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* 新增服裝表單（含圖片上傳） */}
+            <form onSubmit={handleAddOutfit} className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl space-y-3">
+              <span className="text-xs font-bold text-stone-700 block">
+                + 新增約定服裝款式與參考圖
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={newOutfitTitle}
+                  onChange={(e) => setNewOutfitTitle(e.target.value)}
+                  placeholder="套裝名稱 (例: 白色細肩碎花洋裝)"
+                  className="text-xs bg-white text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
+                />
+                <input
+                  type="text"
+                  value={newOutfitDesc}
+                  onChange={(e) => setNewOutfitDesc(e.target.value)}
+                  placeholder="備註 / 配件需求 (例: 自備草帽與低跟鞋)"
+                  className="text-xs bg-white text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <div className="flex items-center gap-2">
+                  <label className="cursor-pointer px-3 py-1.5 bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 text-xs font-semibold rounded-lg transition flex items-center gap-1 shadow-2xs">
+                    <span>📷</span>
+                    <span>{newOutfitImage ? "更換款式圖" : "上傳款式圖"}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleOutfitImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  {newOutfitImage && (
+                    <div className="flex items-center gap-1.5">
+                      <img
+                        src={newOutfitImage}
+                        alt="預覽款式圖"
+                        className="w-7 h-7 object-cover rounded border border-stone-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setNewOutfitImage("")}
+                        className="text-[11px] text-rose-600 hover:underline cursor-pointer"
+                      >
+                        移除
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-stone-800 hover:bg-stone-900 text-white rounded-lg text-xs font-bold transition shrink-0 cursor-pointer shadow-xs"
+                >
+                  + 加入服裝清單
+                </button>
+              </div>
             </form>
           </div>
         </div>
