@@ -78,6 +78,7 @@ interface PhotographerCollaborationTabProps {
   handleSendPaymentNotice: (eventId: string, bank: string, lastFive: string, amount: number) => void;
   handleSendRevisionNotice: (eventId: string, notes: string) => void;
   handleSendInvoiceNotice: (eventId: string, type: "deposit" | "final", amount: number) => void;
+  handleDeliverPhotos?: (eventId: string, cloudUrl: string, password?: string, notes?: string) => void;
   handleFinalizeProject?: (eventId: string) => void;
 }
 
@@ -91,6 +92,7 @@ export default function PhotographerCollaborationTab({
   handleSendPaymentNotice,
   handleSendRevisionNotice,
   handleSendInvoiceNotice,
+  handleDeliverPhotos,
   handleFinalizeProject,
 }: PhotographerCollaborationTabProps) {
   const [innerTab, setInnerTab] = useState<"active" | "history">("active");

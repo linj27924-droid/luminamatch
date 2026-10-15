@@ -79,17 +79,15 @@ export default function ModelDashboardPage() {
     alert("✅ 商業合約、定金意向與常規模板已成功儲存！");
   };
 
-  // ==================== 1. 邀約審核抽屜與彈窗狀態 (復原核心) ====================
+  // ==================== 1. 邀約審核抽屜與彈窗狀態 ====================
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedReq, setSelectedReq] = useState<BookingRequest | null>(null);
   const [actionType, setActionType] = useState<"accept" | "decline" | "review" | null>(null);
 
-  // 審核彈窗內的編輯文字
   const [contractText, setContractText] = useState("");
   const [replyMessage, setReplyMessage] = useState("");
   const [declineReason, setDeclineReason] = useState("");
 
-  // 評價彈窗狀態
   const [reviewScore, setReviewScore] = useState(5.0);
   const [reviewTags, setReviewTags] = useState<string[]>(["極度守時", "尊重邊界"]);
   const [reviewContent, setReviewContent] = useState("");
@@ -128,11 +126,9 @@ export default function ModelDashboardPage() {
     },
   ]);
 
-  // 開啟同意合約彈窗
   const openAcceptModal = (req: BookingRequest) => {
     setSelectedReq(req);
     setActionType("accept");
-    // 依合作性質自動套用對應合約
     if (req.coopType === "商業有酬") {
       setContractText(commercialContractBody);
     } else {
@@ -141,14 +137,12 @@ export default function ModelDashboardPage() {
     setReplyMessage(templateAcceptMessage);
   };
 
-  // 開啟婉拒彈窗
   const openDeclineModal = (req: BookingRequest) => {
     setSelectedReq(req);
     setActionType("decline");
     setDeclineReason(templateDeclineMessage);
   };
 
-  // 開啟同業評價彈窗
   const openReviewModal = (req: BookingRequest) => {
     setSelectedReq(req);
     setActionType("review");
@@ -157,7 +151,7 @@ export default function ModelDashboardPage() {
     setReviewContent("合作非常順利且尊重個人邊界，動作口頭引導精準，非常推薦！");
   };
 
-  // 確認同意約拍
+  // 確認同意約拍（已補齊 caseNumber 與 category 相容性）
   const confirmAccept = () => {
     if (!selectedReq) return;
     setBookingRequests((prev) =>
@@ -173,9 +167,14 @@ export default function ModelDashboardPage() {
       )
     );
 
-    // 同步新增至合作協作室
+    const dateCode = (selectedReq.date || "").replace(/-/g, "") || "20261028";
+    const seq = String(Math.floor(Math.random() * 900) + 100);
+    const resolvedCategory = selectedReq.coopType === "商業有酬" ? "commercial" : "tfcd";
+
     const newCollab: CollaborationProject = {
       id: `collab_${Date.now()}`,
+      caseNumber: `COL-${dateCode}-${seq}`,
+      category: resolvedCategory as any,
       bookingId: selectedReq.id,
       photographerName: selectedReq.photographerName,
       shootDate: selectedReq.date,
@@ -206,7 +205,6 @@ export default function ModelDashboardPage() {
     alert(`🎉 已正式同意【${selectedReq.photographerName}】的約拍！\n合約電子存證已確立，專案已同步加入「🤝 合作協作室」！`);
   };
 
-  // 確認婉拒約拍
   const confirmDecline = () => {
     if (!selectedReq) return;
     setBookingRequests((prev) =>
@@ -219,7 +217,6 @@ export default function ModelDashboardPage() {
     alert(`已禮貌婉拒該約拍邀請，系統已將訊息發送給攝影師。`);
   };
 
-  // 確認送出評價
   const confirmReview = () => {
     if (!selectedReq) return;
     setBookingRequests((prev) =>
@@ -232,10 +229,12 @@ export default function ModelDashboardPage() {
     alert(`⭐ 已成功為【${selectedReq.photographerName}】留下同行評價紀錄！`);
   };
 
-  // ==================== 2. 合作專案協作室狀態 ====================
+  // ==================== 2. 合作專案協作室狀態（補齊預設 caseNumber 與 category） ====================
   const [collaborations, setCollaborations] = useState<CollaborationProject[]>([
     {
       id: "collab_1",
+      caseNumber: "INV-20261015-001",
+      category: "invite",
       bookingId: "REQ-20261028-01",
       photographerName: "陳攝影 (Alan Chen)",
       shootDate: "2026-10-28",
@@ -670,7 +669,7 @@ export default function ModelDashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-3 w-full md:w-auto">
-            {/* ★ 邀約審核按鈕 (含未讀提示徽章) ★ */}
+            {/* 邀約審核按鈕 */}
             <button
               onClick={() => setIsDrawerOpen(true)}
               className="px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
@@ -873,7 +872,7 @@ export default function ModelDashboardPage() {
         )}
       </div>
 
-      {/* ★ 復原：📥 邀約審核右側滑出抽屜 (Drawer) ★ */}
+      {/* 邀約審核右側滑出抽屜 (Drawer) */}
       {isDrawerOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end">
           <div className="w-full max-w-xl bg-[#fbfaf8] dark:bg-stone-900 border-l border-stone-200 dark:border-stone-800 h-full p-6 overflow-y-auto space-y-6 shadow-2xl flex flex-col justify-between">
@@ -952,7 +951,6 @@ export default function ModelDashboardPage() {
                       </p>
                     </div>
 
-                    {/* 操作按鈕群 */}
                     <div className="flex justify-end gap-2 pt-1">
                       {req.status === "pending" && (
                         <>
@@ -1007,7 +1005,7 @@ export default function ModelDashboardPage() {
         </div>
       )}
 
-      {/* ★ 同意約拍彈窗 ★ */}
+      {/* 同意約拍彈窗 */}
       {actionType === "accept" && selectedReq && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-[#fbfaf8] dark:bg-stone-900 border border-stone-200 dark:border-stone-800 max-w-xl w-full p-6 rounded-2xl space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -1056,7 +1054,7 @@ export default function ModelDashboardPage() {
         </div>
       )}
 
-      {/* ★ 婉拒約拍彈窗 ★ */}
+      {/* 婉拒約拍彈窗 */}
       {actionType === "decline" && selectedReq && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-[#fbfaf8] dark:bg-stone-900 border border-stone-200 dark:border-stone-800 max-w-md w-full p-6 rounded-2xl space-y-4 shadow-2xl">
@@ -1094,7 +1092,7 @@ export default function ModelDashboardPage() {
         </div>
       )}
 
-      {/* ★ 填寫同行評價彈窗 ★ */}
+      {/* 填寫同行評價彈窗 */}
       {actionType === "review" && selectedReq && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-[#fbfaf8] dark:bg-stone-900 border border-stone-200 dark:border-stone-800 max-w-lg w-full p-6 rounded-2xl space-y-4 shadow-2xl">
