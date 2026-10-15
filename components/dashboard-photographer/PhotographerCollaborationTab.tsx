@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import ProjectReviewModal, { ReviewSubmitData } from "../reviews/ProjectReviewModal";
 
 export type CollabCategory = "invite" | "tfcd" | "commercial";
 
@@ -104,6 +105,29 @@ export default function PhotographerCollaborationTab({
   const [newOutfitImage, setNewOutfitImage] = useState<string>("");
   const [copiedCaseNum, setCopiedCaseNum] = useState<string | null>(null);
 
+  // 衣服圖片放大預覽 Modal 狀態
+  const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
+
+  // 評價與同業手札 Modal 狀態
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [targetReviewCase, setTargetReviewCase] = useState<{ caseNumber: string; targetName: string } | null>(null);
+  const [reviewedCases, setReviewedCases] = useState<string[]>([]);
+
+  // 載入已評價紀錄
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("lumina_project_reviews");
+      if (saved) {
+        const list = JSON.parse(saved);
+        if (Array.isArray(list)) {
+          setReviewedCases(list.map((r: ReviewSubmitData) => r.caseNumber));
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [bankName, setBankName] = useState("國泰世華 (013)");
   const [lastFive, setLastFive] = useState("");
@@ -119,6 +143,11 @@ export default function PhotographerCollaborationTab({
   const safeEvents = Array.isArray(events) ? events : [];
   const activeEvents = safeEvents.filter((e) => e.status !== "completed");
   const completedEvents = safeEvents.filter((e) => e.status === "completed");
+
+  // 計算各分類進行中案件統計數目
+  const inviteCount = activeEvents.filter((c) => c.category === "invite").length;
+  const tfcdCount = activeEvents.filter((c) => c.category === "tfcd").length;
+  const commercialCount = activeEvents.filter((c) => c.category === "commercial").length;
 
   const filteredCollabs = activeEvents.filter((c) => {
     if (selectedCategory === "all") return true;
@@ -228,6 +257,11 @@ export default function PhotographerCollaborationTab({
     }
   };
 
+  const openReviewForCase = (caseNumber: string, targetName: string) => {
+    setTargetReviewCase({ caseNumber, targetName });
+    setReviewModalOpen(true);
+  };
+
   const bothCheckedIn =
     activeProject?.checkInStatus?.modelCheckedIn &&
     activeProject?.checkInStatus?.photographerCheckedIn;
@@ -272,7 +306,7 @@ export default function PhotographerCollaborationTab({
               <span>歷史邀約履約紀錄存證庫 ({completedEvents.length})</span>
             </h3>
             <p className="text-xs text-stone-500 mt-0.5">
-              已完成結案之專案，完整留存雙方簽到紀錄、金流及約定細節。
+              已完成結案之專案，完整留存雙方簽到紀錄、金流、約定細節與同業評價手札。
             </p>
           </div>
 
@@ -282,27 +316,44 @@ export default function PhotographerCollaborationTab({
             </div>
           ) : (
             <div className="space-y-3">
-              {completedEvents.map((item) => (
-                <div key={item.id} className="p-4 bg-white border border-stone-200 rounded-xl space-y-2 text-xs shadow-2xs">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[11px] bg-stone-900 text-amber-300 px-1.5 py-0.5 rounded font-bold">
-                        #{item.caseNumber}
-                      </span>
-                      <span className="font-bold text-stone-900 text-sm">{item.title || "約拍合作專案"}</span>
-                      <span className="text-stone-500">模特：{item.modelName}</span>
+              {completedEvents.map((item) => {
+                const hasReviewed = reviewedCases.includes(item.caseNumber);
+                return (
+                  <div key={item.id} className="p-4 bg-white border border-stone-200 rounded-xl space-y-2 text-xs shadow-2xs">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[11px] bg-stone-900 text-amber-300 px-1.5 py-0.5 rounded font-bold">
+                          #{item.caseNumber}
+                        </span>
+                        <span className="font-bold text-stone-900 text-sm">{item.title || "約拍合作專案"}</span>
+                        <span className="text-stone-500">模特：{item.modelName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openReviewForCase(item.caseNumber, item.modelName)}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
+                            hasReviewed
+                              ? "bg-amber-50 text-amber-800 border-amber-300"
+                              : "bg-stone-900 hover:bg-stone-800 text-amber-300 border-stone-900 shadow-2xs"
+                          }`}
+                        >
+                          <span>⭐</span>
+                          <span>{hasReviewed ? "檢視／更新評價手札" : "填寫評價／同業手札"}</span>
+                        </button>
+                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">
+                          ✓ 已結案歸檔
+                        </span>
+                      </div>
                     </div>
-                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">
-                      ✓ 已結案歸檔
-                    </span>
+                    <div className="text-[11px] text-stone-500 flex gap-4 pt-1 border-t border-stone-100">
+                      <span>時程：{item.exactTime}</span>
+                      <span>地點：{item.exactLocation}</span>
+                      <span>酬勞：{item.remuneration || "互惠"}</span>
+                    </div>
                   </div>
-                  <div className="text-[11px] text-stone-500 flex gap-4 pt-1 border-t border-stone-100">
-                    <span>時程：{item.exactTime}</span>
-                    <span>地點：{item.exactLocation}</span>
-                    <span>酬勞：{item.remuneration || "互惠"}</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -319,42 +370,63 @@ export default function PhotographerCollaborationTab({
               </p>
             </div>
 
-            <div className="flex bg-[#edeae3] p-1 rounded-xl border border-stone-300 text-xs font-bold">
+            {/* ★ 分類統計按鈕：加上數目標籤 ★ */}
+            <div className="flex flex-wrap bg-[#edeae3] p-1 rounded-xl border border-stone-300 text-xs font-bold gap-0.5">
               <button
                 type="button"
                 onClick={() => setSelectedCategory("all")}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
                   selectedCategory === "all" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
-                全部 ({activeEvents.length})
+                <span>全部</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  selectedCategory === "all" ? "bg-indigo-100 text-indigo-700 font-bold" : "bg-stone-200 text-stone-600"
+                }`}>
+                  {activeEvents.length}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedCategory("invite")}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
                   selectedCategory === "invite" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
-                🎟️ 邀約拍攝
+                <span>🎟️ 邀約拍攝</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  selectedCategory === "invite" ? "bg-indigo-100 text-indigo-700 font-bold" : "bg-stone-200 text-stone-600"
+                }`}>
+                  {inviteCount}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedCategory("tfcd")}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
                   selectedCategory === "tfcd" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
-                🤝 互惠拍攝
+                <span>🤝 互惠拍攝</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  selectedCategory === "tfcd" ? "bg-indigo-100 text-indigo-700 font-bold" : "bg-stone-200 text-stone-600"
+                }`}>
+                  {tfcdCount}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedCategory("commercial")}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
                   selectedCategory === "commercial" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
-                💼 商案拍攝
+                <span>💼 商案拍攝</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  selectedCategory === "commercial" ? "bg-indigo-100 text-indigo-700 font-bold" : "bg-stone-200 text-stone-600"
+                }`}>
+                  {commercialCount}
+                </span>
               </button>
             </div>
           </div>
@@ -687,12 +759,16 @@ export default function PhotographerCollaborationTab({
                       </div>
                     </div>
 
+                    {/* 3. 拍攝服裝挑選（★ 支援圖片點擊放大） */}
                     <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
                       <div className="border-b border-stone-200 pb-2">
                         <h3 className="text-sm font-bold text-stone-800 flex items-center gap-1.5">
                           <span>👗</span>
                           <span>約定服裝挑選與雙方確認清單</span>
                         </h3>
+                        <p className="text-[11px] text-stone-400 mt-0.5">
+                          點擊縮圖可放大檢視服裝細節與花紋
+                        </p>
                       </div>
 
                       <div className="space-y-2.5">
@@ -713,19 +789,36 @@ export default function PhotographerCollaborationTab({
                               >
                                 <div className="flex items-center gap-3">
                                   {outfit.image ? (
-                                    <img
-                                      src={outfit.image}
-                                      alt={outfit.title}
-                                      className="w-14 h-14 object-cover rounded-lg border border-stone-200 shrink-0"
-                                    />
+                                    <div
+                                      className="relative group cursor-pointer"
+                                      onClick={() => setPreviewImage({ src: outfit.image!, title: outfit.title })}
+                                    >
+                                      <img
+                                        src={outfit.image}
+                                        alt={outfit.title}
+                                        className="w-16 h-16 object-cover rounded-lg border border-stone-200 shrink-0 group-hover:opacity-85 transition"
+                                      />
+                                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center text-white text-[10px] font-bold transition">
+                                        🔍 放大
+                                      </div>
+                                    </div>
                                   ) : (
-                                    <div className="w-14 h-14 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center text-lg text-stone-400 shrink-0">
+                                    <div className="w-16 h-16 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center text-lg text-stone-400 shrink-0">
                                       👗
                                     </div>
                                   )}
                                   <div>
                                     <span className="font-bold text-stone-800 text-sm block">{outfit.title}</span>
                                     <p className="text-[11px] text-stone-500 mt-0.5">{outfit.description}</p>
+                                    {outfit.image && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setPreviewImage({ src: outfit.image!, title: outfit.title })}
+                                        className="text-[10px] text-indigo-600 hover:underline mt-1 inline-flex items-center gap-0.5 cursor-pointer"
+                                      >
+                                        🔍 點擊查看大圖
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
 
@@ -803,7 +896,12 @@ export default function PhotographerCollaborationTab({
                             </label>
                             {newOutfitImage && (
                               <div className="flex items-center gap-1.5">
-                                <img src={newOutfitImage} alt="預覽款式圖" className="w-7 h-7 object-cover rounded border border-stone-300" />
+                                <img
+                                  src={newOutfitImage}
+                                  alt="預覽款式圖"
+                                  className="w-7 h-7 object-cover rounded border border-stone-300 cursor-pointer"
+                                  onClick={() => setPreviewImage({ src: newOutfitImage, title: "預覽款式圖" })}
+                                />
                                 <button
                                   type="button"
                                   onClick={() => setNewOutfitImage("")}
@@ -825,6 +923,7 @@ export default function PhotographerCollaborationTab({
                       </form>
                     </div>
 
+                    {/* 4. 結案確認與歸檔模組（★ 包含存證評價與同業手札入口） */}
                     <div className="bg-[#fbfaf8] border-2 border-dashed border-stone-300 rounded-2xl p-6 shadow-sm space-y-4">
                       <div className="flex justify-between items-center border-b border-stone-200 pb-2">
                         <div>
@@ -863,7 +962,25 @@ export default function PhotographerCollaborationTab({
                         </div>
                       </div>
 
-                      <div className="flex justify-end pt-1">
+                      <div className="flex flex-wrap justify-between items-center gap-2 pt-1 border-t border-stone-100">
+                        {/* ⭐ 評價與同業手札按鈕 */}
+                        <button
+                          type="button"
+                          onClick={() => openReviewForCase(activeProject.caseNumber, activeProject.modelName)}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                            reviewedCases.includes(activeProject.caseNumber)
+                              ? "bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200"
+                              : "bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300"
+                          }`}
+                        >
+                          <span>⭐</span>
+                          <span>
+                            {reviewedCases.includes(activeProject.caseNumber)
+                              ? "✓ 檢視／修改同業評價手札"
+                              : "填寫評價與同業手札（防踩雷）"}
+                          </span>
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => onFinalizeClick(activeProject.id)}
@@ -941,6 +1058,55 @@ export default function PhotographerCollaborationTab({
         </div>
       )}
 
+      {/* ★ 衣服圖片點擊放大 Lightbox Modal ★ */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative max-w-2xl max-h-[90vh] bg-stone-900 border border-stone-700 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-3.5 bg-stone-900/90 border-b border-stone-800 text-white">
+              <span className="text-xs font-bold truncate pr-4">{previewImage.title}</span>
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="w-7 h-7 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white flex items-center justify-center text-sm font-bold transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-2 flex items-center justify-center bg-black/40 overflow-auto">
+              <img
+                src={previewImage.src}
+                alt={previewImage.title}
+                className="max-h-[75vh] w-auto max-w-full object-contain rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ★ 履約存證評價與同業手札獨立子組件 ★ */}
+      {targetReviewCase && (
+        <ProjectReviewModal
+          isOpen={reviewModalOpen}
+          onClose={() => {
+            setReviewModalOpen(false);
+            setTargetReviewCase(null);
+          }}
+          caseNumber={targetReviewCase.caseNumber}
+          targetName={targetReviewCase.targetName}
+          targetRole="model"
+          onSubmitReview={(data) => {
+            setReviewedCases((prev) => (prev.includes(data.caseNumber) ? prev : [...prev, data.caseNumber]));
+          }}
+        />
+      )}
+
+      {/* 彈窗 1：邀約拍攝 - 匯款通知 */}
       {payModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form onSubmit={submitPaymentNotice} className="bg-[#fbfaf8] border border-stone-200 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
@@ -973,6 +1139,7 @@ export default function PhotographerCollaborationTab({
         </div>
       )}
 
+      {/* 彈窗 2：互惠修圖通知 */}
       {revModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form onSubmit={submitRevisionNotice} className="bg-[#fbfaf8] border border-stone-200 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
@@ -995,6 +1162,7 @@ export default function PhotographerCollaborationTab({
         </div>
       )}
 
+      {/* 彈窗 3：商案請款通知 */}
       {invModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form onSubmit={submitInvoiceNotice} className="bg-[#fbfaf8] border border-stone-200 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">

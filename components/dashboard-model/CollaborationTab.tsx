@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import CollabOutfitsSection from "../collaboration/CollabOutfitsSection";
+import ProjectReviewModal, { ReviewSubmitData } from "../reviews/ProjectReviewModal";
 
 export type CollabCategory = "invite" | "tfcd" | "commercial";
 
@@ -92,7 +94,7 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
         id: "outfit_1",
         title: "酒紅色刺繡旗袍",
         description: "復古珍珠耳環、自備黑色摺扇與低跟鞋",
-        image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=400&q=80",
+        image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80",
         modelConfirmed: true,
         photographerConfirmed: true,
         status: "confirmed",
@@ -193,7 +195,7 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
         id: "outfit_3",
         title: "韓系秋季針織新品共 6 套",
         description: "品牌方自備服飾與搭配鞋帽",
-        image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=400&q=80",
+        image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=800&q=80",
         modelConfirmed: true,
         photographerConfirmed: true,
         status: "confirmed",
@@ -230,10 +232,26 @@ export default function CollaborationTab({
   const [selectedCategory, setSelectedCategory] = useState<"all" | CollabCategory>("all");
   const [activeCollabId, setActiveCollabId] = useState<string>("");
   const [newMessage, setNewMessage] = useState("");
-  const [newOutfitTitle, setNewOutfitTitle] = useState("");
-  const [newOutfitDesc, setNewOutfitDesc] = useState("");
-  const [newOutfitImage, setNewOutfitImage] = useState<string>("");
   const [copiedCaseNum, setCopiedCaseNum] = useState<string | null>(null);
+
+  // 評價與同業手札 Modal 狀態
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [targetReviewCase, setTargetReviewCase] = useState<{ caseNumber: string; targetName: string } | null>(null);
+  const [reviewedCases, setReviewedCases] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("lumina_project_reviews");
+      if (saved) {
+        const list = JSON.parse(saved);
+        if (Array.isArray(list)) {
+          setReviewedCases(list.map((r: ReviewSubmitData) => r.caseNumber));
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
 
   const loadData = () => {
     if (events && events.length > 0) {
@@ -282,6 +300,10 @@ export default function CollaborationTab({
   const activeCollabs = (collabList || []).filter((c) => c.status !== "completed");
   const completedCollabs = (collabList || []).filter((c) => c.status === "completed");
 
+  const inviteCount = activeCollabs.filter((c) => c.category === "invite").length;
+  const tfcdCount = activeCollabs.filter((c) => c.category === "tfcd").length;
+  const commercialCount = activeCollabs.filter((c) => c.category === "commercial").length;
+
   const filteredCollabs = activeCollabs.filter((c) => {
     if (selectedCategory === "all") return true;
     return c.category === selectedCategory;
@@ -317,38 +339,22 @@ export default function CollaborationTab({
     setNewMessage("");
   };
 
-  const handleOutfitImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (reader.result) setNewOutfitImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleAddOutfit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newOutfitTitle.trim() || !activeProject) return;
-
+  // 服裝挑選操作呼叫子組件
+  const handleAddOutfit = (title: string, desc: string, img?: string) => {
+    if (!activeProject) return;
     const outfit = {
       id: `outfit_${Date.now()}`,
-      title: newOutfitTitle.trim(),
-      description: newOutfitDesc.trim() || "自備服裝搭配",
-      image: newOutfitImage || undefined,
+      title,
+      description: desc || "自備服裝搭配",
+      image: img,
       modelConfirmed: true,
       photographerConfirmed: false,
       status: "pending" as const,
     };
-
     const updated = collabList.map((c) =>
       c.id === activeProject.id ? { ...c, outfits: [...(c.outfits || []), outfit] } : c
     );
     saveToStorage(updated);
-    setNewOutfitTitle("");
-    setNewOutfitDesc("");
-    setNewOutfitImage("");
   };
 
   const handleToggleModelConfirm = (outfitId: string) => {
@@ -467,20 +473,24 @@ export default function CollaborationTab({
     alert("🎉 專案已圓滿結案並收納至「歷史邀約」模組！");
   };
 
+  const openReviewForCase = (caseNumber: string, targetName: string) => {
+    setTargetReviewCase({ caseNumber, targetName });
+    setReviewModalOpen(true);
+  };
+
   const bothCheckedIn =
     activeProject?.checkInStatus?.modelCheckedIn &&
     activeProject?.checkInStatus?.photographerCheckedIn;
 
   return (
     <div className="space-y-6">
+      {/* 頂部切換 */}
       <div className="flex bg-[#edeae3]/80 p-1 rounded-2xl border border-stone-300 w-fit">
         <button
           type="button"
           onClick={() => setInnerTab("active")}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-            innerTab === "active"
-              ? "bg-white text-indigo-700 shadow-xs"
-              : "text-stone-600 hover:text-stone-900"
+            innerTab === "active" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
           }`}
         >
           <span>🤝 進行中協作室</span>
@@ -490,9 +500,7 @@ export default function CollaborationTab({
           type="button"
           onClick={() => setInnerTab("history")}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-            innerTab === "history"
-              ? "bg-white text-indigo-700 shadow-xs"
-              : "text-stone-600 hover:text-stone-900"
+            innerTab === "history" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
           }`}
         >
           <span>📜 歷史邀約存證</span>
@@ -520,27 +528,42 @@ export default function CollaborationTab({
             </div>
           ) : (
             <div className="space-y-3">
-              {completedCollabs.map((item) => (
-                <div key={item.id} className="p-4 bg-white border border-stone-200 rounded-xl space-y-2 text-xs shadow-2xs">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[11px] bg-stone-900 text-amber-300 px-1.5 py-0.5 rounded font-bold">
-                        #{item.caseNumber}
-                      </span>
-                      <span className="font-bold text-stone-900 text-sm">{item.title || "合作專案"}</span>
-                      <span className="text-stone-500">攝影：{item.photographerName}</span>
+              {completedCollabs.map((item) => {
+                const hasReviewed = reviewedCases.includes(item.caseNumber);
+                return (
+                  <div key={item.id} className="p-4 bg-white border border-stone-200 rounded-xl space-y-2 text-xs shadow-2xs">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[11px] bg-stone-900 text-amber-300 px-1.5 py-0.5 rounded font-bold">
+                          #{item.caseNumber}
+                        </span>
+                        <span className="font-bold text-stone-900 text-sm">{item.title || "合作專案"}</span>
+                        <span className="text-stone-500">攝影：{item.photographerName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openReviewForCase(item.caseNumber, item.photographerName)}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
+                            hasReviewed ? "bg-amber-50 text-amber-800 border-amber-300" : "bg-stone-900 hover:bg-stone-800 text-amber-300 border-stone-900 shadow-2xs"
+                          }`}
+                        >
+                          <span>⭐</span>
+                          <span>{hasReviewed ? "檢視／更新評價手札" : "填寫評價／同業手札"}</span>
+                        </button>
+                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">
+                          ✓ 已結案歸檔
+                        </span>
+                      </div>
                     </div>
-                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">
-                      ✓ 已結案歸檔
-                    </span>
+                    <div className="text-[11px] text-stone-500 flex gap-4 pt-1 border-t border-stone-100">
+                      <span>時程：{item.exactTime}</span>
+                      <span>地點：{item.exactLocation}</span>
+                      <span>酬勞：{item.remuneration || "互惠"}</span>
+                    </div>
                   </div>
-                  <div className="text-[11px] text-stone-500 flex gap-4 pt-1 border-t border-stone-100">
-                    <span>時程：{item.exactTime}</span>
-                    <span>地點：{item.exactLocation}</span>
-                    <span>酬勞：{item.remuneration || "互惠"}</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -557,42 +580,63 @@ export default function CollaborationTab({
               </p>
             </div>
 
-            <div className="flex bg-[#edeae3] p-1 rounded-xl border border-stone-300 text-xs font-bold">
+            {/* 分類按鈕與統計數量 */}
+            <div className="flex flex-wrap bg-[#edeae3] p-1 rounded-xl border border-stone-300 text-xs font-bold gap-0.5">
               <button
                 type="button"
                 onClick={() => setSelectedCategory("all")}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
                   selectedCategory === "all" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
-                全部 ({activeCollabs.length})
+                <span>全部</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  selectedCategory === "all" ? "bg-indigo-100 text-indigo-700 font-bold" : "bg-stone-200 text-stone-600"
+                }`}>
+                  {activeCollabs.length}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedCategory("invite")}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
                   selectedCategory === "invite" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
-                🎟️ 邀約拍攝
+                <span>🎟️ 邀約拍攝</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  selectedCategory === "invite" ? "bg-indigo-100 text-indigo-700 font-bold" : "bg-stone-200 text-stone-600"
+                }`}>
+                  {inviteCount}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedCategory("tfcd")}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
                   selectedCategory === "tfcd" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
-                🤝 互惠拍攝
+                <span>🤝 互惠拍攝</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  selectedCategory === "tfcd" ? "bg-indigo-100 text-indigo-700 font-bold" : "bg-stone-200 text-stone-600"
+                }`}>
+                  {tfcdCount}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedCategory("commercial")}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
                   selectedCategory === "commercial" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
-                💼 商案拍攝
+                <span>💼 商案拍攝</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  selectedCategory === "commercial" ? "bg-indigo-100 text-indigo-700 font-bold" : "bg-stone-200 text-stone-600"
+                }`}>
+                  {commercialCount}
+                </span>
               </button>
             </div>
           </div>
@@ -740,9 +784,7 @@ export default function CollaborationTab({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="p-4 bg-white border border-stone-200 rounded-xl space-y-2.5">
                           <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-stone-800">
-                              🛡️ 抵達拍攝地安全簽到
-                            </span>
+                            <span className="text-xs font-bold text-stone-800">🛡️ 抵達拍攝地安全簽到</span>
                             {bothCheckedIn && (
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 雙方皆已抵達
@@ -774,9 +816,7 @@ export default function CollaborationTab({
                         </div>
 
                         <div className="p-4 bg-white border border-stone-200 rounded-xl space-y-2.5">
-                          <span className="text-xs font-bold text-stone-800 block">
-                            💸 拍攝完成提醒攝影師轉帳
-                          </span>
+                          <span className="text-xs font-bold text-stone-800 block">💸 拍攝完成提醒攝影師轉帳</span>
                           <p className="text-[11px] text-stone-500">
                             拍攝結束若攝影師忘記付現或轉帳，可一鍵發送禮貌提醒通知。
                           </p>
@@ -921,143 +961,14 @@ export default function CollaborationTab({
                       </div>
                     </div>
 
-                    {/* 3. 拍攝服裝挑選 */}
-                    <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-                      <div className="border-b border-stone-200 pb-2">
-                        <h3 className="text-sm font-bold text-stone-800 flex items-center gap-1.5">
-                          <span>👗</span>
-                          <span>約定服裝挑選與雙方確認清單</span>
-                        </h3>
-                      </div>
-
-                      <div className="space-y-2.5">
-                        {(activeProject.outfits || []).length === 0 ? (
-                          <div className="text-center py-6 text-xs text-stone-400 bg-white rounded-xl border border-dashed border-stone-300">
-                            尚未新增任何拍攝服裝，請在下方填寫並上傳款式圖片！
-                          </div>
-                        ) : (
-                          activeProject.outfits.map((outfit) => {
-                            const isModelOk = outfit.modelConfirmed ?? (outfit.status === "confirmed");
-                            const isPhotographerOk =
-                              outfit.photographerConfirmed ?? (outfit.status === "confirmed");
-
-                            return (
-                              <div
-                                key={outfit.id}
-                                className="p-3.5 bg-white border border-stone-200 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs shadow-2xs"
-                              >
-                                <div className="flex items-center gap-3">
-                                  {outfit.image ? (
-                                    <img
-                                      src={outfit.image}
-                                      alt={outfit.title}
-                                      className="w-14 h-14 object-cover rounded-lg border border-stone-200 shrink-0"
-                                    />
-                                  ) : (
-                                    <div className="w-14 h-14 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center text-lg text-stone-400 shrink-0">
-                                      👗
-                                    </div>
-                                  )}
-                                  <div>
-                                    <span className="font-bold text-stone-800 text-sm block">{outfit.title}</span>
-                                    <p className="text-[11px] text-stone-500 mt-0.5">{outfit.description}</p>
-                                  </div>
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleModelConfirm(outfit.id)}
-                                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
-                                      isModelOk
-                                        ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
-                                        : "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
-                                    }`}
-                                  >
-                                    <span>{isModelOk ? "✓ 模特：已確認" : "⏳ 模特：待確認 (點擊確認)"}</span>
-                                  </button>
-
-                                  <span
-                                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
-                                      isPhotographerOk
-                                        ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                                        : "bg-stone-100 text-stone-600 border-stone-300"
-                                    }`}
-                                  >
-                                    {isPhotographerOk ? "✓ 攝影：已確認" : "⏳ 攝影：待確認"}
-                                  </span>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteOutfit(outfit.id)}
-                                    className="text-stone-400 hover:text-rose-600 p-1 cursor-pointer transition text-xs"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-
-                      <form onSubmit={handleAddOutfit} className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl space-y-3">
-                        <span className="text-xs font-bold text-stone-700 block">
-                          + 新增約定服裝款式與參考圖
-                        </span>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            value={newOutfitTitle}
-                            onChange={(e) => setNewOutfitTitle(e.target.value)}
-                            placeholder="套裝名稱 (例: 白色細肩碎花洋裝)"
-                            className="text-xs bg-white text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
-                          />
-                          <input
-                            type="text"
-                            value={newOutfitDesc}
-                            onChange={(e) => setNewOutfitDesc(e.target.value)}
-                            placeholder="備註 / 配件需求 (例: 自備草帽與低跟鞋)"
-                            className="text-xs bg-white text-stone-800 border border-stone-300 rounded-lg p-2 outline-none focus:border-indigo-500"
-                          />
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                          <div className="flex items-center gap-2">
-                            <label className="cursor-pointer px-3 py-1.5 bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 text-xs font-semibold rounded-lg transition flex items-center gap-1 shadow-2xs">
-                              <span>📷</span>
-                              <span>{newOutfitImage ? "更換款式圖" : "上傳款式圖"}</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleOutfitImageUpload}
-                                className="hidden"
-                              />
-                            </label>
-                            {newOutfitImage && (
-                              <div className="flex items-center gap-1.5">
-                                <img src={newOutfitImage} alt="預覽款式圖" className="w-7 h-7 object-cover rounded border border-stone-300" />
-                                <button
-                                  type="button"
-                                  onClick={() => setNewOutfitImage("")}
-                                  className="text-[11px] text-rose-600 hover:underline cursor-pointer"
-                                >
-                                  移除
-                                </button>
-                              </div>
-                            )}
-                          </div>
-
-                          <button
-                            type="submit"
-                            className="px-4 py-2 bg-stone-800 hover:bg-stone-900 text-white rounded-lg text-xs font-bold transition shrink-0 cursor-pointer shadow-xs"
-                          >
-                            + 加入服裝清單
-                          </button>
-                        </div>
-                      </form>
-                    </div>
+                    {/* 3. 拍攝服裝挑選（★ 引用拆分後之子組件） */}
+                    <CollabOutfitsSection
+                      outfits={activeProject.outfits || []}
+                      userRole="model"
+                      onToggleConfirm={handleToggleModelConfirm}
+                      onAddOutfit={handleAddOutfit}
+                      onDeleteOutfit={handleDeleteOutfit}
+                    />
 
                     {/* 4. 結案確認與歸檔模組 */}
                     <div className="bg-[#fbfaf8] border-2 border-dashed border-stone-300 rounded-2xl p-6 shadow-sm space-y-4">
@@ -1098,7 +1009,25 @@ export default function CollaborationTab({
                         </div>
                       </div>
 
-                      <div className="flex justify-end pt-1">
+                      <div className="flex flex-wrap justify-between items-center gap-2 pt-1 border-t border-stone-100">
+                        {/* ⭐ 評價與同業手札按鈕 */}
+                        <button
+                          type="button"
+                          onClick={() => openReviewForCase(activeProject.caseNumber, activeProject.photographerName)}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                            reviewedCases.includes(activeProject.caseNumber)
+                              ? "bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200"
+                              : "bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300"
+                          }`}
+                        >
+                          <span>⭐</span>
+                          <span>
+                            {reviewedCases.includes(activeProject.caseNumber)
+                              ? "✓ 檢視／修改同業評價手札"
+                              : "填寫評價與同業手札（防踩雷）"}
+                          </span>
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => handleFinalizeProject(activeProject.id)}
@@ -1175,6 +1104,23 @@ export default function CollaborationTab({
             </>
           )}
         </div>
+      )}
+
+      {/* 履約存證評價與同業手札獨立子組件 */}
+      {targetReviewCase && (
+        <ProjectReviewModal
+          isOpen={reviewModalOpen}
+          onClose={() => {
+            setReviewModalOpen(false);
+            setTargetReviewCase(null);
+          }}
+          caseNumber={targetReviewCase.caseNumber}
+          targetName={targetReviewCase.targetName}
+          targetRole="photographer"
+          onSubmitReview={(data) => {
+            setReviewedCases((prev) => (prev.includes(data.caseNumber) ? prev : [...prev, data.caseNumber]));
+          }}
+        />
       )}
     </div>
   );
