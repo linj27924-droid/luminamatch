@@ -7,7 +7,7 @@ export type CollabCategory = "invite" | "tfcd" | "commercial";
 export interface CollaborationProject {
   id: string;
   caseNumber: string;
-  title: string;
+  title?: string;
   bookingId?: string;
   category: CollabCategory;
   modelName: string;
@@ -18,15 +18,7 @@ export interface CollaborationProject {
   locationGuide?: string;
   coopType: string;
   remuneration?: string;
-  deliveryDays?: number; // 約定交件天數 (預設 14)
-  deliveryProof?: {
-    cloudUrl: string;
-    accessPassword?: string;
-    notes?: string;
-    deliveredAt: string; // 交付時間戳
-    isModelAccepted?: boolean; // 模特是否驗收確認
-    acceptedAt?: string;
-  };
+  deliveryDays?: number;
   bankInfo: {
     bankCode: string;
     bankName: string;
@@ -86,8 +78,7 @@ interface PhotographerCollaborationTabProps {
   handleSendPaymentNotice: (eventId: string, bank: string, lastFive: string, amount: number) => void;
   handleSendRevisionNotice: (eventId: string, notes: string) => void;
   handleSendInvoiceNotice: (eventId: string, type: "deposit" | "final", amount: number) => void;
-  handleFinalizeProject: (eventId: string) => void;
-  handleDeliverPhotos: (eventId: string, cloudUrl: string, password?: string, notes?: string) => void; // ★ 新增交件函式
+  handleFinalizeProject?: (eventId: string) => void;
 }
 
 export default function PhotographerCollaborationTab({
@@ -101,7 +92,6 @@ export default function PhotographerCollaborationTab({
   handleSendRevisionNotice,
   handleSendInvoiceNotice,
   handleFinalizeProject,
-  handleDeliverPhotos,
 }: PhotographerCollaborationTabProps) {
   const [innerTab, setInnerTab] = useState<"active" | "history">("active");
   const [selectedCategory, setSelectedCategory] = useState<"all" | CollabCategory>("all");
@@ -111,12 +101,6 @@ export default function PhotographerCollaborationTab({
   const [newOutfitDesc, setNewOutfitDesc] = useState("");
   const [newOutfitImage, setNewOutfitImage] = useState<string>("");
   const [copiedCaseNum, setCopiedCaseNum] = useState<string | null>(null);
-
-  // 交付彈窗狀態
-  const [deliverModalOpen, setDeliverModalOpen] = useState(false);
-  const [cloudUrlInput, setCloudUrlInput] = useState("");
-  const [accessPasswordInput, setAccessPasswordInput] = useState("");
-  const [deliveryNotesInput, setDeliveryNotesInput] = useState("");
 
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [bankName, setBankName] = useState("國泰世華 (013)");
@@ -130,8 +114,9 @@ export default function PhotographerCollaborationTab({
   const [invType, setInvType] = useState<"deposit" | "final">("deposit");
   const [invAmount, setInvAmount] = useState<number>(5000);
 
-  const activeEvents = events.filter((e) => e.status !== "completed");
-  const completedEvents = events.filter((e) => e.status === "completed");
+  const safeEvents = Array.isArray(events) ? events : [];
+  const activeEvents = safeEvents.filter((e) => e.status !== "completed");
+  const completedEvents = safeEvents.filter((e) => e.status === "completed");
 
   const filteredCollabs = activeEvents.filter((c) => {
     if (selectedCategory === "all") return true;
@@ -167,30 +152,6 @@ export default function PhotographerCollaborationTab({
       return;
     }
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coords)}`, "_blank");
-  };
-
-  // 計算交付天數倒數
-  const getDeliveryCountdown = (shootDateStr: string, limitDays: number = 14) => {
-    try {
-      const shootDate = new Date(shootDateStr);
-      const dueDate = new Date(shootDate);
-      dueDate.setDate(dueDate.getDate() + limitDays);
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      dueDate.setHours(0, 0, 0, 0);
-
-      const diffTime = dueDate.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      return {
-        dueDateStr: dueDate.toISOString().slice(0, 10),
-        remainingDays: diffDays,
-        isOverdue: diffDays < 0,
-      };
-    } catch {
-      return { dueDateStr: "約定 14 天內", remainingDays: 14, isOverdue: false };
-    }
   };
 
   const submitSendChat = (e: React.FormEvent) => {
@@ -242,33 +203,36 @@ export default function PhotographerCollaborationTab({
     setInvModalOpen(false);
   };
 
-  // 送出雲端交件
-  const submitDeliverPhotos = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeProject || !cloudUrlInput.trim()) return;
-    handleDeliverPhotos(
-      activeProject.id,
-      cloudUrlInput.trim(),
-      accessPasswordInput.trim() || undefined,
-      deliveryNotesInput.trim() || undefined
-    );
-    setDeliverModalOpen(false);
-    setCloudUrlInput("");
-    setAccessPasswordInput("");
-    setDeliveryNotesInput("");
+  const onFinalizeClick = (eventId: string) => {
+    if (handleFinalizeProject) {
+      handleFinalizeProject(eventId);
+    } else {
+      const confirm = window.confirm("確定要將此約拍專案完成結案並移入「歷史邀約」存證庫嗎？");
+      if (!confirm) return;
+      const saved = localStorage.getItem("lumina_collaboration_events");
+      if (saved) {
+        try {
+          const list = JSON.parse(saved);
+          const updated = list.map((c: any) =>
+            c.id === eventId ? { ...c, status: "completed" } : c
+          );
+          localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
+          window.dispatchEvent(new Event("storage"));
+          alert("🎉 專案已順利結案並收納至「歷史邀約」存證庫！");
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
   };
 
   const bothCheckedIn =
     activeProject?.checkInStatus?.modelCheckedIn &&
     activeProject?.checkInStatus?.photographerCheckedIn;
 
-  const countdown = activeProject
-    ? getDeliveryCountdown(activeProject.shootDate, activeProject.deliveryDays || 14)
-    : null;
-
   return (
     <div className="space-y-6">
-      {/* 履約協作 vs 歷史邀約 切換列 */}
+      {/* 頂部切換：進行中協作室 vs 歷史邀約存證 */}
       <div className="flex bg-[#edeae3]/80 p-1 rounded-2xl border border-stone-300 w-fit">
         <button
           type="button"
@@ -306,13 +270,13 @@ export default function PhotographerCollaborationTab({
               <span>歷史邀約履約紀錄存證庫 ({completedEvents.length})</span>
             </h3>
             <p className="text-xs text-stone-500 mt-0.5">
-              已結案之約拍專案，完整留存金流、時間戳與合約履約佐證。
+              已完成結案之專案，完整留存雙方簽到紀錄、金流及約定細節。
             </p>
           </div>
 
           {completedEvents.length === 0 ? (
             <div className="p-12 text-center bg-[#f5f3ef] rounded-xl border border-dashed border-stone-300 text-xs text-stone-400">
-              目前尚無已結案之專案。進行中案件點擊「正式結案」後將收納至此處。
+              目前尚無已結案之專案。進行中案件點擊「正式結案」後將自動歸檔於此處。
             </div>
           ) : (
             <div className="space-y-3">
@@ -323,7 +287,7 @@ export default function PhotographerCollaborationTab({
                       <span className="font-mono text-[11px] bg-stone-900 text-amber-300 px-1.5 py-0.5 rounded font-bold">
                         #{item.caseNumber}
                       </span>
-                      <span className="font-bold text-stone-900 text-sm">{item.title}</span>
+                      <span className="font-bold text-stone-900 text-sm">{item.title || "約拍合作專案"}</span>
                       <span className="text-stone-500">模特：{item.modelName}</span>
                     </div>
                     <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">
@@ -424,110 +388,6 @@ export default function PhotographerCollaborationTab({
               {activeProject && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 space-y-6">
-                    {/* ★ 核心功能 1：成品交付連結與倒數存證區塊 */}
-                    <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-stone-200 pb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">📦</span>
-                          <h3 className="text-sm font-bold text-stone-900">
-                            精修照片成品交付存證（約定 {activeProject.deliveryDays || 14} 天內交付）
-                          </h3>
-                        </div>
-
-                        {/* 倒數標籤 */}
-                        {countdown && (
-                          <div className="flex items-center gap-1.5">
-                            {activeProject.deliveryProof ? (
-                              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold">
-                                ✓ 成品已正式交付
-                              </span>
-                            ) : countdown.isOverdue ? (
-                              <span className="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-300 rounded-lg text-xs font-bold animate-pulse">
-                                ⚠️ 已逾期 {Math.abs(countdown.remainingDays)} 天 (期限: {countdown.dueDateStr})
-                              </span>
-                            ) : countdown.remainingDays === 0 ? (
-                              <span className="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-300 rounded-lg text-xs font-bold animate-pulse">
-                                ⏳ 今日為交件截止日 ({countdown.dueDateStr})
-                              </span>
-                            ) : (
-                              <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold">
-                                ⏳ 交稿倒數剩餘 {countdown.remainingDays} 天 (期限: {countdown.dueDateStr})
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 交付內容展示或填寫按鈕 */}
-                      {activeProject.deliveryProof ? (
-                        <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-3">
-                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs text-stone-800">🔗 雲端下載載點：</span>
-                              <a
-                                href={activeProject.deliveryProof.cloudUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs font-bold text-indigo-600 hover:underline max-w-sm truncate block"
-                              >
-                                {activeProject.deliveryProof.cloudUrl}
-                              </a>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCloudUrlInput(activeProject.deliveryProof?.cloudUrl || "");
-                                setAccessPasswordInput(activeProject.deliveryProof?.accessPassword || "");
-                                setDeliveryNotesInput(activeProject.deliveryProof?.notes || "");
-                                setDeliverModalOpen(true);
-                              }}
-                              className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-[11px] font-bold cursor-pointer"
-                            >
-                              ✏️ 修改載點
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-stone-600 bg-[#fbfaf8] p-2.5 rounded-lg border border-stone-150">
-                            <div>解壓/取件密碼：<strong>{activeProject.deliveryProof.accessPassword || "無密碼"}</strong></div>
-                            <div>交付時間：<span className="font-mono">{activeProject.deliveryProof.deliveredAt}</span></div>
-                            <div>
-                              模特驗收狀態：
-                              {activeProject.deliveryProof.isModelAccepted ? (
-                                <strong className="text-emerald-700 ml-1">✓ 已驗收確認</strong>
-                              ) : (
-                                <span className="text-amber-700 ml-1">⏳ 模特查驗中</span>
-                              )}
-                            </div>
-                          </div>
-
-                          {activeProject.deliveryProof.notes && (
-                            <p className="text-[11px] text-stone-500 bg-[#f5f3ef] p-2 rounded">
-                              備註說明：{activeProject.deliveryProof.notes}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="bg-white p-4 rounded-xl border border-stone-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                          <div>
-                            <span className="font-bold text-xs text-stone-800 block">尚未正式交付成品雲端載點</span>
-                            <p className="text-[11px] text-stone-500 mt-0.5">
-                              調色或精修完成後，請上傳 Google Drive、Dropbox 或雲端並在此填寫載點以留存存證。
-                            </p>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => setDeliverModalOpen(true)}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-2xs shrink-0 cursor-pointer"
-                          >
-                            📤 正式交付成品雲端連結
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 2. 當日現場履約與核銷狀態 */}
                     <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
                       <div className="flex flex-wrap justify-between items-center border-b border-stone-200 pb-2 gap-2">
                         <div className="flex items-center gap-2">
@@ -570,7 +430,6 @@ export default function PhotographerCollaborationTab({
                         </div>
                       </div>
 
-                      {/* 邀約拍攝：匯款通報按鈕 */}
                       {activeProject.category === "invite" && (
                         <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
                           <div className="flex justify-between items-center">
@@ -623,7 +482,6 @@ export default function PhotographerCollaborationTab({
                         </div>
                       )}
 
-                      {/* 互惠拍攝：修圖備忘 */}
                       {activeProject.category === "tfcd" && (
                         <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2">
                           <div className="flex justify-between items-center">
@@ -660,7 +518,6 @@ export default function PhotographerCollaborationTab({
                         </div>
                       )}
 
-                      {/* 商案拍攝：請款通報 */}
                       {activeProject.category === "commercial" && (
                         <div className="p-3.5 bg-amber-50/70 border border-amber-300 rounded-xl space-y-2">
                           <div className="flex justify-between items-center">
@@ -760,7 +617,6 @@ export default function PhotographerCollaborationTab({
                       </div>
                     </div>
 
-                    {/* 3. 精確時間地點、座標與收款帳號 */}
                     <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-5">
                       <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200 pb-2 flex items-center gap-1.5">
                         <span>💳</span>
@@ -829,7 +685,6 @@ export default function PhotographerCollaborationTab({
                       </div>
                     </div>
 
-                    {/* 4. 拍攝服裝挑選 */}
                     <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
                       <div className="border-b border-stone-200 pb-2">
                         <h3 className="text-sm font-bold text-stone-800 flex items-center gap-1.5">
@@ -968,7 +823,6 @@ export default function PhotographerCollaborationTab({
                       </form>
                     </div>
 
-                    {/* 5. 結案確認與歸檔模組 */}
                     <div className="bg-[#fbfaf8] border-2 border-dashed border-stone-300 rounded-2xl p-6 shadow-sm space-y-4">
                       <div className="flex justify-between items-center border-b border-stone-200 pb-2">
                         <div>
@@ -992,21 +846,17 @@ export default function PhotographerCollaborationTab({
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={activeProject.deliveryProof?.isModelAccepted ? "text-emerald-600 font-bold" : "text-stone-700"}>
-                            {activeProject.deliveryProof?.isModelAccepted
-                              ? "✓ 成品已交付驗收"
-                              : activeProject.deliveryProof
-                              ? "⏳ 成品待模特查驗"
-                              : "⏳ 成品尚未交付"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <span className={activeProject.paymentStatus === "paid" ? "text-emerald-600 font-bold" : "text-stone-700"}>
                             {activeProject.category === "tfcd"
-                              ? "✓ 互惠專案免付款"
+                              ? "✓ 互惠成品交付驗收"
                               : activeProject.paymentStatus === "paid"
                               ? "✓ 專案款項已結清"
                               : "⏳ 款項等待結清"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-emerald-600 font-bold">
+                            ✓ 合約通訊存證完整
                           </span>
                         </div>
                       </div>
@@ -1014,7 +864,7 @@ export default function PhotographerCollaborationTab({
                       <div className="flex justify-end pt-1">
                         <button
                           type="button"
-                          onClick={() => handleFinalizeProject(activeProject.id)}
+                          onClick={() => onFinalizeClick(activeProject.id)}
                           className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer"
                         >
                           <span>🔒</span>
@@ -1024,8 +874,7 @@ export default function PhotographerCollaborationTab({
                     </div>
                   </div>
 
-                  {/* 右側一欄：案件即時留言溝通 */}
-                  <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-5 shadow-sm flex flex-col h-[860px]">
+                  <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-5 shadow-sm flex flex-col h-[760px]">
                     <div className="pb-3 border-b border-stone-200 flex justify-between items-center">
                       <div>
                         <h4 className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
@@ -1090,59 +939,6 @@ export default function PhotographerCollaborationTab({
         </div>
       )}
 
-      {/* ★ 彈窗 0：交付成品雲端載點 */}
-      {deliverModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={submitDeliverPhotos} className="bg-[#fbfaf8] border border-stone-200 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b border-stone-200 pb-2">
-              <h4 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
-                <span>📤</span>
-                <span>正式交付成品雲端載點（合約存證）</span>
-              </h4>
-              <button type="button" onClick={() => setDeliverModalOpen(false)} className="text-stone-400 hover:text-stone-600 text-base font-bold cursor-pointer">✕</button>
-            </div>
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">雲端下載網址 (Google Drive / Dropbox / OneDrive 等)</label>
-                <input
-                  type="url"
-                  required
-                  value={cloudUrlInput}
-                  onChange={(e) => setCloudUrlInput(e.target.value)}
-                  placeholder="https://drive.google.com/drive/folders/..."
-                  className="w-full bg-white text-stone-800 border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 font-mono text-xs"
-                />
-              </div>
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">下載密碼 / 解壓密碼 (若無可留空)</label>
-                <input
-                  type="text"
-                  value={accessPasswordInput}
-                  onChange={(e) => setAccessPasswordInput(e.target.value)}
-                  placeholder="例：2026hane"
-                  className="w-full bg-white text-stone-800 border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">交稿說明 / 挑選精修張數備忘</label>
-                <textarea
-                  rows={3}
-                  value={deliveryNotesInput}
-                  onChange={(e) => setDeliveryNotesInput(e.target.value)}
-                  placeholder="例：包含 15 張高畫質精修 JPG + 全數調色毛片，請於 7 日內下載保存。"
-                  className="w-full bg-white text-stone-800 border border-stone-300 rounded-lg p-2.5 outline-none focus:border-indigo-500"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 pt-2 border-t border-stone-200">
-              <button type="button" onClick={() => setDeliverModalOpen(false)} className="px-3.5 py-1.5 bg-stone-200 text-stone-700 rounded-xl text-xs font-bold hover:bg-stone-300 cursor-pointer">取消</button>
-              <button type="submit" className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer">確認交付並發送通報</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* 彈窗 1：邀約拍攝 - 匯款通知 */}
       {payModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form onSubmit={submitPaymentNotice} className="bg-[#fbfaf8] border border-stone-200 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
@@ -1175,7 +971,6 @@ export default function PhotographerCollaborationTab({
         </div>
       )}
 
-      {/* 彈窗 2：互惠修圖通知 */}
       {revModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form onSubmit={submitRevisionNotice} className="bg-[#fbfaf8] border border-stone-200 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
@@ -1198,7 +993,6 @@ export default function PhotographerCollaborationTab({
         </div>
       )}
 
-      {/* 彈窗 3：商案請款通知 */}
       {invModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form onSubmit={submitInvoiceNotice} className="bg-[#fbfaf8] border border-stone-200 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">

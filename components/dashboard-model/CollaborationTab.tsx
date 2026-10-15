@@ -7,7 +7,7 @@ export type CollabCategory = "invite" | "tfcd" | "commercial";
 export interface CollaborationProject {
   id: string;
   caseNumber: string;
-  title: string;
+  title?: string;
   bookingId?: string;
   category: CollabCategory;
   photographerName: string;
@@ -15,17 +15,10 @@ export interface CollaborationProject {
   exactTime: string;
   exactLocation: string;
   coordinates?: string;
+  locationGuide?: string;
   coopType: string;
   remuneration?: string;
   deliveryDays?: number;
-  deliveryProof?: {
-    cloudUrl: string;
-    accessPassword?: string;
-    notes?: string;
-    deliveredAt: string;
-    isModelAccepted?: boolean;
-    acceptedAt?: string;
-  };
   bankInfo: {
     bankCode: string;
     bankName: string;
@@ -88,7 +81,6 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
     coordinates: "25.0569, 121.5074",
     coopType: "邀約拍攝 (自費聘請)",
     remuneration: "NT$ 6,000",
-    deliveryDays: 14,
     bankInfo: {
       bankCode: "822",
       bankName: "中國信託",
@@ -149,7 +141,6 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
     coordinates: "25.0722, 121.5248",
     coopType: "互惠拍攝 (TFCD)",
     remuneration: "互惠免支付",
-    deliveryDays: 14,
     bankInfo: {
       bankCode: "822",
       bankName: "中國信託",
@@ -191,7 +182,6 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
     coordinates: "25.0441, 121.5606",
     coopType: "商案拍攝 (商業受託)",
     remuneration: "NT$ 18,000",
-    deliveryDays: 14,
     bankInfo: {
       bankCode: "822",
       bankName: "中國信託",
@@ -226,12 +216,16 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
 
 interface CollaborationTabProps {
   currentModelName?: string;
+  events?: CollaborationProject[];
+  collaborations?: any;
+  setCollaborations?: any;
 }
 
 export default function CollaborationTab({
   currentModelName = "羽晴 (Hane)",
+  events,
 }: CollaborationTabProps) {
-  const [collabList, setCollabList] = useState<CollaborationProject[]>(DEFAULT_PROJECTS);
+  const [collabList, setCollabList] = useState<CollaborationProject[]>(events || DEFAULT_PROJECTS);
   const [innerTab, setInnerTab] = useState<"active" | "history">("active");
   const [selectedCategory, setSelectedCategory] = useState<"all" | CollabCategory>("all");
   const [activeCollabId, setActiveCollabId] = useState<string>("");
@@ -242,6 +236,10 @@ export default function CollaborationTab({
   const [copiedCaseNum, setCopiedCaseNum] = useState<string | null>(null);
 
   const loadData = () => {
+    if (events && events.length > 0) {
+      setCollabList(events);
+      return;
+    }
     const saved = localStorage.getItem("lumina_collaboration_events");
     if (saved) {
       try {
@@ -274,15 +272,15 @@ export default function CollaborationTab({
     };
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  }, [events]);
 
   const saveToStorage = (updated: CollaborationProject[]) => {
     setCollabList(updated);
     localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
   };
 
-  const activeCollabs = collabList.filter((c) => c.status !== "completed");
-  const completedCollabs = collabList.filter((c) => c.status === "completed");
+  const activeCollabs = (collabList || []).filter((c) => c.status !== "completed");
+  const completedCollabs = (collabList || []).filter((c) => c.status === "completed");
 
   const filteredCollabs = activeCollabs.filter((c) => {
     if (selectedCategory === "all") return true;
@@ -357,7 +355,7 @@ export default function CollaborationTab({
     if (!activeProject) return;
     const updated = collabList.map((c) => {
       if (c.id !== activeProject.id) return c;
-      const updatedOutfits = c.outfits.map((o) => {
+      const updatedOutfits = (c.outfits || []).map((o) => {
         if (o.id !== outfitId) return o;
         const currentStatus = o.modelConfirmed ?? (o.status === "confirmed");
         return { ...o, modelConfirmed: !currentStatus };
@@ -371,7 +369,7 @@ export default function CollaborationTab({
     if (!activeProject) return;
     const updated = collabList.map((c) =>
       c.id === activeProject.id
-        ? { ...c, outfits: c.outfits.filter((o) => o.id !== outfitId) }
+        ? { ...c, outfits: (c.outfits || []).filter((o) => o.id !== outfitId) }
         : c
     );
     saveToStorage(updated);
@@ -445,26 +443,6 @@ export default function CollaborationTab({
     alert("✅ 已確認款項入帳！系統已同步回報予攝影師。");
   };
 
-  // ★ 核心功能：模特確認驗收已收件
-  const handleAcceptDelivery = (projectId: string) => {
-    const nowStr = new Date().toISOString().slice(5, 16).replace("T", " ");
-    const updated = collabList.map((c) => {
-      if (c.id === projectId && c.deliveryProof) {
-        return {
-          ...c,
-          deliveryProof: {
-            ...c.deliveryProof,
-            isModelAccepted: true,
-            acceptedAt: nowStr,
-          },
-        };
-      }
-      return c;
-    });
-    saveToStorage(updated);
-    alert("✅ 驗收確認成功！已通知攝影師您已順利取得照片成品。");
-  };
-
   const handleSendPaymentReminder = () => {
     if (!activeProject) return;
     const updated = collabList.map((c) =>
@@ -476,8 +454,9 @@ export default function CollaborationTab({
 
   const handleFinalizeProject = (projectId: string) => {
     const target = collabList.find((c) => c.id === projectId);
+    const titleText = target?.title || "本合作專案";
     const confirm = window.confirm(
-      `確定要正式完成結案【${target?.title || "專案"}】嗎？\n結案後本專案將自動移入「歷史邀約」存證庫歸檔。`
+      `確定要正式完成結案【${titleText}】嗎？\n結案後本專案將自動收納至「歷史邀約」存證庫。`
     );
     if (!confirm) return;
 
@@ -494,7 +473,6 @@ export default function CollaborationTab({
 
   return (
     <div className="space-y-6">
-      {/* 履約協作 vs 歷史邀約 切換列 */}
       <div className="flex bg-[#edeae3]/80 p-1 rounded-2xl border border-stone-300 w-fit">
         <button
           type="button"
@@ -524,7 +502,6 @@ export default function CollaborationTab({
         </button>
       </div>
 
-      {/* 歷史邀約清單 */}
       {innerTab === "history" ? (
         <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
           <div className="border-b border-stone-200 pb-2">
@@ -550,7 +527,7 @@ export default function CollaborationTab({
                       <span className="font-mono text-[11px] bg-stone-900 text-amber-300 px-1.5 py-0.5 rounded font-bold">
                         #{item.caseNumber}
                       </span>
-                      <span className="font-bold text-stone-900 text-sm">{item.title}</span>
+                      <span className="font-bold text-stone-900 text-sm">{item.title || "合作專案"}</span>
                       <span className="text-stone-500">攝影：{item.photographerName}</span>
                     </div>
                     <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">
@@ -568,7 +545,6 @@ export default function CollaborationTab({
           )}
         </div>
       ) : (
-        /* 進行中協作室 */
         <div className="space-y-6">
           <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
@@ -628,7 +604,6 @@ export default function CollaborationTab({
             </div>
           ) : (
             <>
-              {/* 專案分籤列 */}
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {filteredCollabs.map((collab) => (
                   <button
@@ -653,94 +628,7 @@ export default function CollaborationTab({
               {activeProject && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 space-y-6">
-                    {/* ★ 1. 模特端成品驗收區塊 */}
-                    <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-                      <div className="flex justify-between items-center border-b border-stone-200 pb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">📦</span>
-                          <h3 className="text-sm font-bold text-stone-900">
-                            精修照片成品驗收
-                          </h3>
-                        </div>
-                        {activeProject.deliveryProof ? (
-                          activeProject.deliveryProof.isModelAccepted ? (
-                            <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold">
-                              ✓ 您已完成成品驗收
-                            </span>
-                          ) : (
-                            <span className="px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-300 rounded-full text-xs font-bold animate-pulse">
-                              ⏳ 攝影師已交付，請確認下載
-                            </span>
-                          )
-                        ) : (
-                          <span className="px-2.5 py-0.5 bg-stone-100 text-stone-600 rounded-full text-xs font-bold">
-                            ⏳ 攝影師精修中 (約定 {activeProject.deliveryDays || 14} 天內)
-                          </span>
-                        )}
-                      </div>
-
-                      {activeProject.deliveryProof ? (
-                        <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-3">
-                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-xs text-stone-800">攝影師已提供雲端載點：</span>
-                                <a
-                                  href={activeProject.deliveryProof.cloudUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-xs font-bold text-indigo-600 hover:underline max-w-sm truncate block"
-                                >
-                                  {activeProject.deliveryProof.cloudUrl}
-                                </a>
-                              </div>
-                              <p className="text-[11px] text-stone-500 mt-1">
-                                交付時間：{activeProject.deliveryProof.deliveredAt} ｜ 取件密碼：
-                                <strong className="font-mono text-stone-800 ml-1">{activeProject.deliveryProof.accessPassword || "無"}</strong>
-                              </p>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <a
-                                href={activeProject.deliveryProof.cloudUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-lg text-xs font-bold transition flex items-center gap-1"
-                              >
-                                <span>📥</span>
-                                <span>前往下載</span>
-                              </a>
-
-                              {activeProject.deliveryProof.isModelAccepted ? (
-                                <span className="px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold border border-emerald-300">
-                                  ✓ 已確認驗收
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleAcceptDelivery(activeProject.id)}
-                                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer"
-                                >
-                                  ✓ 確認收件 (完成驗收)
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {activeProject.deliveryProof.notes && (
-                            <p className="text-[11px] text-stone-500 bg-[#f5f3ef] p-2 rounded">
-                              攝影師說明：{activeProject.deliveryProof.notes}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-stone-500 py-2">
-                          攝影師尚未填寫雲端交稿連結。依約定將於拍攝日後 {activeProject.deliveryDays || 14} 天內上傳交付。
-                        </p>
-                      )}
-                    </div>
-
-                    {/* 2. 當日現場履約與核銷狀態 */}
+                    {/* 1. 當日現場履約與核銷狀態 */}
                     <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
                       <div className="flex flex-wrap justify-between items-center border-b border-stone-200 pb-2 gap-2">
                         <div className="flex items-center gap-2">
@@ -909,7 +797,7 @@ export default function CollaborationTab({
                       </div>
                     </div>
 
-                    {/* 3. 精確時間地點、座標與收款帳號 */}
+                    {/* 2. 精確時間地點、座標與收款帳號 */}
                     <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-5">
                       <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200 pb-2 flex items-center gap-1.5">
                         <span>💳</span>
@@ -1033,7 +921,7 @@ export default function CollaborationTab({
                       </div>
                     </div>
 
-                    {/* 4. 拍攝服裝挑選 */}
+                    {/* 3. 拍攝服裝挑選 */}
                     <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
                       <div className="border-b border-stone-200 pb-2">
                         <h3 className="text-sm font-bold text-stone-800 flex items-center gap-1.5">
@@ -1171,7 +1059,7 @@ export default function CollaborationTab({
                       </form>
                     </div>
 
-                    {/* 5. 結案確認與歸檔模組 */}
+                    {/* 4. 結案確認與歸檔模組 */}
                     <div className="bg-[#fbfaf8] border-2 border-dashed border-stone-300 rounded-2xl p-6 shadow-sm space-y-4">
                       <div className="flex justify-between items-center border-b border-stone-200 pb-2">
                         <div>
@@ -1195,21 +1083,17 @@ export default function CollaborationTab({
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={activeProject.deliveryProof?.isModelAccepted ? "text-emerald-600 font-bold" : "text-stone-700"}>
-                            {activeProject.deliveryProof?.isModelAccepted
-                              ? "✓ 成品已驗收完成"
-                              : activeProject.deliveryProof
-                              ? "⏳ 成品待模特確認"
-                              : "⏳ 攝影師交稿中"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <span className={activeProject.paymentStatus === "paid" ? "text-emerald-600 font-bold" : "text-stone-700"}>
                             {activeProject.category === "tfcd"
-                              ? "✓ 互惠專案免付款"
+                              ? "✓ 互惠成品交付驗收"
                               : activeProject.paymentStatus === "paid"
                               ? "✓ 專案款項已結清"
                               : "⏳ 款項等待結清"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-emerald-600 font-bold">
+                            ✓ 合約通訊存證完整
                           </span>
                         </div>
                       </div>
@@ -1228,7 +1112,7 @@ export default function CollaborationTab({
                   </div>
 
                   {/* 右側一欄：案件即時留言溝通 */}
-                  <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-5 shadow-sm flex flex-col h-[860px]">
+                  <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-5 shadow-sm flex flex-col h-[760px]">
                     <div className="pb-3 border-b border-stone-200 flex justify-between items-center">
                       <div>
                         <h4 className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
