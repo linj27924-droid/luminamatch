@@ -1,313 +1,197 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState } from "react";
+import Link from "next/link";
 
-// 載入 4 個獨立零件 (同時提供別名與相對路徑確保編譯絕對成功)
-import ExploreHeader from "../components/explore/ExploreHeader";
-import ExploreFilterBar from "../components/explore/ExploreFilterBar";
-import ModelCardGrid, { ModelCard } from "../components/explore/ModelCardGrid";
-import PhotographerCardGrid, { PhotographerCard } from "../components/explore/PhotographerCardGrid";
+// 僅保留一位標準測試模特
+const MOCK_MODELS = [
+  {
+    id: "hane",
+    name: "羽晴 (Hane)",
+    city: "台北 / 新北",
+    styles: ["日系清透", "時裝街拍", "復古底片"],
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+    rating: 4.9,
+    dealsCount: 38,
+    coopType: "互惠 / 商案皆可",
+    bio: "熱愛自然光與膠卷感人像，具備 3 年外拍接案經驗，準時守約。",
+  },
+];
+
+// 僅保留一位標準測試攝影師
+const MOCK_PHOTOGRAPHERS = [
+  {
+    id: "陳攝影 (Alan Chen)",
+    name: "陳攝影 (Alan Chen)",
+    city: "台北 / 新北",
+    styles: ["日系膠卷清新", "俐落時裝街拍", "自然光寫真"],
+    avatar: "https://images.unsplash.com/photo-1554048612-b6a482bc67e5?auto=format&fit=crop&w=600&q=80",
+    rating: 4.9,
+    dealsCount: 26,
+    coopType: "互惠 / 商案皆可",
+    bio: "專注於日系膠卷微光感與韓系時裝人像，零接觸肢體引導，守約守時。",
+  },
+];
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<"models" | "photographers">("models");
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const [modelHeightFilter, setModelHeightFilter] = useState<string>("all");
-  const [modelCoopFilter, setModelCoopFilter] = useState<string>("all");
-
-  const [photoCoopFilter, setPhotoCoopFilter] = useState<string>("all");
-  const [photoDeliveryFilter, setPhotoDeliveryFilter] = useState<string>("all");
-
-  // 1. 模特資料庫
-  const [models, setModels] = useState<ModelCard[]>([
-    {
-      id: "hane",
-      name: "羽晴 (Hane)",
-      city: "台北 / 新北",
-      height: 165,
-      weight: "48",
-      hideWeight: false,
-      experienceYears: "3",
-      coopMode: "互惠/商案皆可",
-      coopBadges: ["商業有酬", "互惠創作 (TFCD)"],
-      styles: ["日系清新", "韓系時裝"],
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80",
-      focusY: 20,
-      completionRate: "98%",
-      completedCount: 14,
-      rating: 5.0,
-      companionPolicy: "可攜伴 (親友同行)",
-    },
-    {
-      id: "mina",
-      name: "米娜 (Mina)",
-      city: "台中 / 彰化",
-      height: 168,
-      weight: "50",
-      hideWeight: true,
-      experienceYears: "4",
-      coopMode: "商業有酬",
-      coopBadges: ["商業有酬", "車馬費補貼"],
-      styles: ["歐美街拍", "復古底片"],
-      avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=800&q=80",
-      focusY: 25,
-      completionRate: "100%",
-      completedCount: 22,
-      rating: 4.9,
-      companionPolicy: "必攜伴 (親友全程陪同)",
-    },
-    {
-      id: "yuki",
-      name: "雪奈 (Yuki)",
-      city: "高雄 / 台南",
-      height: 158,
-      weight: "44",
-      hideWeight: false,
-      experienceYears: "2",
-      coopMode: "互惠創作 (TFCD)",
-      coopBadges: ["互惠創作 (TFCD)", "棚費平攤"],
-      styles: ["日系清新", "古風漢服"],
-      avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=800&q=80",
-      focusY: 15,
-      completionRate: "95%",
-      completedCount: 8,
-      rating: 4.8,
-      companionPolicy: "可單獨前往",
-    },
-    {
-      id: "chloe",
-      name: "克洛伊 (Chloe)",
-      city: "台北市",
-      height: 172,
-      weight: "52",
-      hideWeight: true,
-      experienceYears: "5",
-      coopMode: "商業有酬",
-      coopBadges: ["商業有酬"],
-      styles: ["歐美時尚", "時裝大片", "商業型錄"],
-      avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=800&q=80",
-      focusY: 30,
-      completionRate: "99%",
-      completedCount: 35,
-      rating: 4.9,
-      companionPolicy: "可攜伴 (親友同行)",
-    },
-    {
-      id: "ann",
-      name: "安安 (Ann)",
-      city: "桃園 / 新竹",
-      height: 162,
-      weight: "46",
-      hideWeight: false,
-      experienceYears: "1",
-      coopMode: "互惠創作 (TFCD)",
-      coopBadges: ["互惠創作 (TFCD)"],
-      styles: ["日系JK", "膠卷日常", "戶外踏青"],
-      avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=800&q=80",
-      focusY: 20,
-      completionRate: "96%",
-      completedCount: 11,
-      rating: 4.7,
-      companionPolicy: "可單獨前往",
-    },
-  ]);
-
-  // 2. 攝影師資料庫
-  const [photographers, setPhotographers] = useState<PhotographerCard[]>([
-    {
-      id: "Alan Chen",
-      name: "陳攝影 (Alan Chen)",
-      city: "台北 / 新北",
-      coopMode: "互惠/商案皆可",
-      deliveryCommitmentDays: 14,
-      styles: ["日系膠卷清新", "俐落時裝街拍", "自然光人像"],
-      avatar: "https://images.unsplash.com/photo-1554048612-b6a482bc67e5?auto=format&fit=crop&w=800&q=80",
-      focusY: 30,
-      completionRate: "98%",
-      completedCount: 26,
-      rating: 4.9,
-      safePromise: "零接觸肢體引導 / 備女性助理",
-    },
-    {
-      id: "Ray Studio",
-      name: "林光影視覺 (Ray Studio)",
-      city: "台北 / 新北 / 基隆",
-      coopMode: "商業有酬",
-      deliveryCommitmentDays: 7,
-      styles: ["韓系俐落型錄", "棚拍光影", "商品形象照"],
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=800&q=80",
-      focusY: 25,
-      completionRate: "100%",
-      completedCount: 42,
-      rating: 5.0,
-      safePromise: "攝影棚公證拍攝 / 簽約保障",
-    },
-    {
-      id: "Kidd Visual",
-      name: "凱德 (Kidd Visual)",
-      city: "台中 / 彰化",
-      coopMode: "互惠創作 (TFCD)",
-      deliveryCommitmentDays: 14,
-      styles: ["美式復古", "街頭底片", "情緒人像"],
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80",
-      focusY: 20,
-      completionRate: "96%",
-      completedCount: 18,
-      rating: 4.8,
-      safePromise: "戶外公開場合拍攝 / 可攜伴同行",
-    },
-    {
-      id: "Light & Shadow",
-      name: "初光影像 (Light & Shadow)",
-      city: "台南 / 高雄",
-      coopMode: "互惠/商案皆可",
-      deliveryCommitmentDays: 7,
-      styles: ["日系清新", "古風漢服", "午後自然光"],
-      avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=800&q=80",
-      focusY: 20,
-      completionRate: "97%",
-      completedCount: 29,
-      rating: 4.9,
-      safePromise: "尊重人身界線 / 全程口頭引導",
-    },
-  ]);
-
-  // 跨頁即時同步讀取模特後台最新資料
-  useEffect(() => {
-    const syncModelData = () => {
-      const savedModel = localStorage.getItem("lumina_model_profile_data");
-      if (savedModel) {
-        try {
-          const parsed = JSON.parse(savedModel);
-          setModels((prev) =>
-            prev.map((m) => {
-              if (m.id === "hane") {
-                const h = parsed.modelProfile?.height ? Number(parsed.modelProfile.height) : m.height;
-
-                let badges: string[] = [];
-                if (parsed.modelProfile?.allCoopModes && parsed.modelProfile.allCoopModes.length > 0) {
-                  badges = parsed.modelProfile.allCoopModes;
-                } else if (parsed.modelProfile?.selectedCoopModes) {
-                  badges = [...parsed.modelProfile.selectedCoopModes];
-                  if (parsed.modelProfile.customCoop1) badges.push(parsed.modelProfile.customCoop1);
-                  if (parsed.modelProfile.customCoop2) badges.push(parsed.modelProfile.customCoop2);
-                } else {
-                  badges = m.coopBadges;
-                }
-
-                return {
-                  ...m,
-                  name: parsed.modelProfile?.name || m.name,
-                  city: parsed.modelProfile?.city || m.city,
-                  height: isNaN(h) ? m.height : h,
-                  avatar: parsed.coverPhoto || m.avatar,
-                  focusY: parsed.coverFocusY !== undefined ? parsed.coverFocusY : m.focusY,
-                  styles: parsed.styles || m.styles,
-                  companionPolicy: parsed.modelProfile?.companionPolicy || m.companionPolicy,
-                  hideWeight: parsed.modelProfile?.hideWeight ?? m.hideWeight,
-                  weight: parsed.modelProfile?.weight || m.weight,
-                  experienceYears: parsed.modelProfile?.experienceYears || m.experienceYears || "3",
-                  coopBadges: badges,
-                };
-              }
-              return m;
-            })
-          );
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    };
-
-    syncModelData();
-    window.addEventListener("storage", syncModelData);
-    return () => window.removeEventListener("storage", syncModelData);
-  }, []);
-
-  // 模特篩選計算
-  const filteredModels = useMemo(() => {
-    return models.filter((model) => {
-      if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
-        const matchesName = model.name.toLowerCase().includes(term);
-        const matchesCity = model.city.toLowerCase().includes(term);
-        const matchesStyle = model.styles.some((s) => s.toLowerCase().includes(term));
-        const matchesCoop = model.coopBadges.some((b) => b.toLowerCase().includes(term));
-        if (!matchesName && !matchesCity && !matchesStyle && !matchesCoop) return false;
-      }
-      if (modelHeightFilter !== "all") {
-        if (modelHeightFilter === "under_160" && model.height >= 160) return false;
-        if (modelHeightFilter === "160_165" && (model.height < 160 || model.height > 165)) return false;
-        if (modelHeightFilter === "166_170" && (model.height < 166 || model.height > 170)) return false;
-        if (modelHeightFilter === "above_170" && model.height <= 170) return false;
-      }
-      if (modelCoopFilter !== "all") {
-        if (modelCoopFilter === "tfcd" && !model.coopBadges.some((b) => b.includes("互惠"))) return false;
-        if (modelCoopFilter === "commercial" && !model.coopBadges.some((b) => b.includes("商業"))) return false;
-      }
-      return true;
-    });
-  }, [models, searchTerm, modelHeightFilter, modelCoopFilter]);
-
-  // 攝影師篩選計算
-  const filteredPhotographers = useMemo(() => {
-    return photographers.filter((photo) => {
-      if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
-        const matchesName = photo.name.toLowerCase().includes(term);
-        const matchesCity = photo.city.toLowerCase().includes(term);
-        const matchesStyle = photo.styles.some((s) => s.toLowerCase().includes(term));
-        if (!matchesName && !matchesCity && !matchesStyle) return false;
-      }
-      if (photoCoopFilter !== "all") {
-        if (photoCoopFilter === "tfcd" && !photo.coopMode.includes("互惠")) return false;
-        if (photoCoopFilter === "commercial" && !photo.coopMode.includes("商業")) return false;
-      }
-      if (photoDeliveryFilter !== "all") {
-        if (photoDeliveryFilter === "fast_7" && photo.deliveryCommitmentDays > 7) return false;
-        if (photoDeliveryFilter === "standard_14" && photo.deliveryCommitmentDays > 14) return false;
-      }
-      return true;
-    });
-  }, [photographers, searchTerm, photoCoopFilter, photoDeliveryFilter]);
-
-  const currentResultCount =
-    activeTab === "models" ? filteredModels.length : filteredPhotographers.length;
+  const [activeRoleFilter, setActiveRoleFilter] = useState<"all" | "model" | "photographer">("all");
 
   return (
     <main className="min-h-[calc(100vh-65px)] bg-stone-100/70 px-4 py-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* 零件 1：探索大廳頂部標題與身分切換按鈕 */}
-        <ExploreHeader
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          modelsCount={models.length}
-          photographersCount={photographers.length}
-        />
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* 測試環境導引橫幅 */}
+        <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🧪</span>
+              <h2 className="text-base font-bold text-stone-900">雙向功能測試沙盒（1 模特 ＋ 1 攝影）</h2>
+            </div>
+            <p className="text-xs text-stone-500 mt-1">
+              已收斂為單一模特【羽晴】與單一攝影師【陳攝影】，便於快速測試報價單審核、協作室與留言互通。
+            </p>
+          </div>
 
-        {/* 零件 2：搜尋列與各條件篩選按鈕 */}
-        <ExploreFilterBar
-          activeTab={activeTab}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          modelHeightFilter={modelHeightFilter}
-          setModelHeightFilter={setModelHeightFilter}
-          modelCoopFilter={modelCoopFilter}
-          setModelCoopFilter={setModelCoopFilter}
-          photoCoopFilter={photoCoopFilter}
-          setPhotoCoopFilter={setPhotoCoopFilter}
-          photoDeliveryFilter={photoDeliveryFilter}
-          setPhotoDeliveryFilter={setPhotoDeliveryFilter}
-          resultCount={currentResultCount}
-        />
+          <div className="flex gap-2">
+            <Link
+              href="/dashboard/model"
+              className="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition shadow-2xs"
+            >
+              👩‍🦰 進入模特後台
+            </Link>
+            <Link
+              href="/dashboard/photographer"
+              className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition shadow-2xs"
+            >
+              📷 進入攝影後台
+            </Link>
+          </div>
+        </div>
 
-        {/* 零件 3：模特卡片網格 */}
-        {activeTab === "models" && <ModelCardGrid models={filteredModels} />}
+        {/* 探索分類過濾標籤 */}
+        <div className="flex justify-between items-center">
+          <h3 className="text-sm font-bold text-stone-800 flex items-center gap-2">
+            <span>🔍</span>
+            <span>尋找合作夥伴</span>
+          </h3>
 
-        {/* 零件 4：攝影師卡片網格 */}
-        {activeTab === "photographers" && (
-          <PhotographerCardGrid photographers={filteredPhotographers} />
-        )}
+          <div className="flex bg-[#edeae3] p-1 rounded-xl border border-stone-300 text-xs font-bold">
+            <button
+              onClick={() => setActiveRoleFilter("all")}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                activeRoleFilter === "all" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              全部 (2)
+            </button>
+            <button
+              onClick={() => setActiveRoleFilter("model")}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                activeRoleFilter === "model" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              模特 (1)
+            </button>
+            <button
+              onClick={() => setActiveRoleFilter("photographer")}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                activeRoleFilter === "photographer" ? "bg-white text-indigo-700 shadow-2xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              攝影師 (1)
+            </button>
+          </div>
+        </div>
+
+        {/* 探索卡片網格 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {/* 1. 唯一模特卡片 */}
+          {(activeRoleFilter === "all" || activeRoleFilter === "model") && (
+            <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-5 shadow-sm space-y-4 hover:border-stone-300 transition">
+              <div className="flex items-center gap-4">
+                <img
+                  src={MOCK_MODELS[0].avatar}
+                  alt={MOCK_MODELS[0].name}
+                  className="w-16 h-16 rounded-2xl object-cover border border-stone-300 shadow-2xs"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-base font-bold text-stone-900">{MOCK_MODELS[0].name}</h4>
+                    <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[10px] font-bold">
+                      認證模特
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-500 mt-0.5">{MOCK_MODELS[0].city} ‧ ★ {MOCK_MODELS[0].rating}</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                {MOCK_MODELS[0].bio}
+              </p>
+
+              <div className="flex flex-wrap gap-1.5">
+                {MOCK_MODELS[0].styles.map((s) => (
+                  <span key={s} className="px-2 py-0.5 bg-stone-100 text-stone-600 rounded text-[10px] font-bold">
+                    #{s}
+                  </span>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-stone-200 flex justify-between items-center">
+                <span className="text-[11px] text-stone-500 font-bold">{MOCK_MODELS[0].coopType}</span>
+                <Link
+                  href={`/model/${encodeURIComponent(MOCK_MODELS[0].id)}`}
+                  className="px-4 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-2xs"
+                >
+                  查看模特主頁 ➔
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* 2. 唯一攝影師卡片 */}
+          {(activeRoleFilter === "all" || activeRoleFilter === "photographer") && (
+            <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-5 shadow-sm space-y-4 hover:border-stone-300 transition">
+              <div className="flex items-center gap-4">
+                <img
+                  src={MOCK_PHOTOGRAPHERS[0].avatar}
+                  alt={MOCK_PHOTOGRAPHERS[0].name}
+                  className="w-16 h-16 rounded-2xl object-cover border border-stone-300 shadow-2xs"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-base font-bold text-stone-900">{MOCK_PHOTOGRAPHERS[0].name}</h4>
+                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-[10px] font-bold">
+                      認證攝影師
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-500 mt-0.5">{MOCK_PHOTOGRAPHERS[0].city} ‧ ★ {MOCK_PHOTOGRAPHERS[0].rating}</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                {MOCK_PHOTOGRAPHERS[0].bio}
+              </p>
+
+              <div className="flex flex-wrap gap-1.5">
+                {MOCK_PHOTOGRAPHERS[0].styles.map((s) => (
+                  <span key={s} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-[10px] font-bold">
+                    #{s}
+                  </span>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-stone-200 flex justify-between items-center">
+                <span className="text-[11px] text-stone-500 font-bold">{MOCK_PHOTOGRAPHERS[0].coopType}</span>
+                <Link
+                  href={`/photographer/${encodeURIComponent(MOCK_PHOTOGRAPHERS[0].id)}`}
+                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-2xs"
+                >
+                  查看攝影主頁 ➔
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );

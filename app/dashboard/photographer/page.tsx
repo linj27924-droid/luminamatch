@@ -12,6 +12,7 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
   {
     id: "collab_1",
     caseNumber: "INV-20261015-001",
+    title: "大稻埕復古街拍與旗袍專案",
     category: "invite",
     modelName: "羽晴 (Hane)",
     shootDate: "2026-10-18",
@@ -20,6 +21,7 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
     coordinates: "25.0569, 121.5074",
     coopType: "邀約拍攝 (自費聘請)",
     remuneration: "NT$ 6,000",
+    deliveryDays: 14,
     bankInfo: {
       bankCode: "822",
       bankName: "中國信託",
@@ -43,6 +45,7 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
       photographerCheckedIn: false,
     },
     paymentStatus: "deposit_paid",
+    status: "confirmed",
     paymentNotice: {
       bankName: "國泰世華 (013)",
       lastFiveDigits: "88621",
@@ -70,6 +73,7 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
   {
     id: "collab_2",
     caseNumber: "TFC-20261015-002",
+    title: "秋季自然光時裝外拍",
     category: "tfcd",
     modelName: "米娜 (Mina)",
     shootDate: "2026-10-24",
@@ -78,6 +82,7 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
     coordinates: "25.0722, 121.5248",
     coopType: "互惠拍攝 (TFCD)",
     remuneration: "互惠免支付",
+    deliveryDays: 14,
     bankInfo: {
       bankCode: "822",
       bankName: "中國信託",
@@ -99,6 +104,7 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
       photographerCheckedIn: false,
     },
     paymentStatus: "unpaid",
+    status: "confirmed",
     revisionNotice: {
       requestCount: 1,
       notes: "已將初剪毛片上傳雲端，精選 15 張調色為日系微光風，待確認後交付高畫質檔。",
@@ -109,6 +115,7 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
   {
     id: "collab_3",
     caseNumber: "COM-20261015-003",
+    title: "韓系時裝品牌型錄委託案",
     category: "commercial",
     modelName: "晴晴 (Ching)",
     shootDate: "2026-10-30",
@@ -117,6 +124,7 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
     coordinates: "25.0441, 121.5606",
     coopType: "商案拍攝 (商業受託)",
     remuneration: "NT$ 18,000",
+    deliveryDays: 14,
     bankInfo: {
       bankCode: "822",
       bankName: "中國信託",
@@ -139,6 +147,7 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
       photographerCheckedIn: false,
     },
     paymentStatus: "deposit_paid",
+    status: "confirmed",
     invoiceNotice: {
       invoiceType: "deposit",
       amount: 5400,
@@ -355,7 +364,6 @@ export default function PhotographerDashboardPage() {
     alert("✅ 商案制式合約書範本已成功儲存！");
   };
 
-  // 服裝確認
   const handleToggleOutfitApproval = (eventId: string, outfitId: string) => {
     const updated = collabEvents.map((evt) => {
       if (evt.id !== eventId) return evt;
@@ -494,6 +502,45 @@ export default function PhotographerDashboardPage() {
     setCollabEvents(updated);
     localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
     alert(`✅ 已送出【${type === "deposit" ? "30% 簽約定金" : "結案尾款"}】請款通知（NT$ ${amount}）！`);
+  };
+
+  // ★ 攝影師正式交付成品雲端載點
+  const handleDeliverPhotos = (eventId: string, cloudUrl: string, password?: string, notes?: string) => {
+    const nowStr = new Date().toISOString().slice(5, 16).replace("T", " ");
+    const updated = collabEvents.map((evt) => {
+      if (evt.id === eventId) {
+        return {
+          ...evt,
+          deliveryProof: {
+            cloudUrl,
+            accessPassword: password,
+            notes,
+            deliveredAt: nowStr,
+            isModelAccepted: false,
+          },
+        };
+      }
+      return evt;
+    });
+    setCollabEvents(updated);
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
+    alert(`🎉 成品載點已正式交付存證！\n雲端連結：${cloudUrl}\n模特端將即刻收到驗收通知。`);
+  };
+
+  const handleFinalizeProject = (eventId: string) => {
+    const target = collabEvents.find((e) => e.id === eventId);
+    const projectTitle = target?.title || "本合作專案";
+    const confirm = window.confirm(
+      `確定要正式完成結案【${projectTitle}】嗎？\n結案後本專案將自動歸入「歷史邀約」存證庫。`
+    );
+    if (!confirm) return;
+
+    const updated = collabEvents.map((c) =>
+      c.id === eventId ? { ...c, status: "completed" as const } : c
+    );
+    setCollabEvents(updated);
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(updated));
+    alert("🎉 專案已順利結案並收納至「歷史邀約」模組！");
   };
 
   const handleApproveRequest = (id: string, durationHours: number = 168) => {
@@ -650,6 +697,8 @@ export default function PhotographerDashboardPage() {
             handleSendPaymentNotice={handleSendPaymentNotice}
             handleSendRevisionNotice={handleSendRevisionNotice}
             handleSendInvoiceNotice={handleSendInvoiceNotice}
+            handleFinalizeProject={handleFinalizeProject}
+            handleDeliverPhotos={handleDeliverPhotos}
           />
         )}
 
