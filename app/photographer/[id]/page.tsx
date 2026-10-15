@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, use, Suspense } from "react";
 import { useRouter } from "next/navigation";
+import PhotographerPublicSchedule from "../../../components/photographer-profile/PhotographerPublicSchedule";
+import PublicReviewsSection from "../../../components/reviews/PublicReviewsSection";
 
 interface PeerReview {
   id: string;
@@ -71,7 +73,6 @@ function PhotographerProfileContent({
   const resolvedParams = use(params);
   const photographerId = decodeURIComponent(resolvedParams.id);
 
-  // 當前登入者身分
   const [currentUserRole, setCurrentUserRole] = useState<"model" | "photographer" | "guest">("model");
   const [currentUserName, setCurrentUserName] = useState("羽晴 (Hane)");
 
@@ -93,10 +94,19 @@ function PhotographerProfileContent({
     equipment: "Sony A7 系列 / 神牛外拍閃燈 / 柔光罩",
     safePromise: "零肢體接觸口頭引導 / 歡迎親友同行 / 女性助理隨行",
     styles: ["日系膠卷清新", "俐落時裝街拍", "自然光人像寫真"],
-    portfolioImages: DEFAULT_PORTFOLIO, // ★ 最多 9 張精選作品
+    portfolioImages: DEFAULT_PORTFOLIO,
   });
 
-  // 報價單與審核狀態
+  const [scheduleData, setScheduleData] = useState<
+    Record<string, { status: "available" | "busy" | "off"; note?: string }>
+  >({
+    "2026-10-18": { status: "busy", note: "大稻埕外拍" },
+    "2026-10-24": { status: "busy", note: "秋季時裝" },
+    "2026-10-30": { status: "busy", note: "商案型錄" },
+  });
+
+  const [selectedScheduleDate, setSelectedScheduleDate] = useState<string | null>(null);
+
   const [rateCardImages, setRateCardImages] = useState<string[]>([
     "https://images.unsplash.com/photo-1554415707-9e4466bfe03b?auto=format&fit=crop&w=800&q=80",
   ]);
@@ -104,10 +114,8 @@ function PhotographerProfileContent({
   const [isRateCardModalOpen, setIsRateCardModalOpen] = useState(false);
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
 
-  // 放大檢視作品照片
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
-  // 公開社群連結
   const [socialLinks, setSocialLinks] = useState({
     instagram: "https://instagram.com/alan_photostudio",
     facebook: "https://facebook.com/alan.chen.visual",
@@ -156,7 +164,6 @@ function PhotographerProfileContent({
             portfolioImages: p.portfolioImages && p.portfolioImages.length > 0 ? p.portfolioImages : DEFAULT_PORTFOLIO,
           });
 
-          // 如果後台有設定 socialLinks，優先讀取
           if (p.socialLinks) {
             setSocialLinks(p.socialLinks);
           }
@@ -167,6 +174,7 @@ function PhotographerProfileContent({
         if (parsed.rateCardImages) setRateCardImages(parsed.rateCardImages);
         if (parsed.rateCardAccessMode) setRateCardAccessMode(parsed.rateCardAccessMode);
         if (parsed.incomingRequests) setIncomingRequests(parsed.incomingRequests);
+        if (parsed.scheduleData) setScheduleData(parsed.scheduleData);
       } catch (e) {
         console.error("載入攝影師設定失敗", e);
       }
@@ -194,12 +202,10 @@ function PhotographerProfileContent({
     }
   }, [photographerId]);
 
-  // 判斷當前使用者對此攝影師報價單的審核狀態
   const currentRequest = incomingRequests.find((r) => r.applicantName.includes(currentUserName));
   const isApproved = currentRequest?.status === "approved";
   const isPending = currentRequest?.status === "pending";
 
-  // 提交索取報價單
   const handleRequestSubmit = () => {
     const newReq = {
       id: `req_${Date.now()}`,
@@ -219,6 +225,10 @@ function PhotographerProfileContent({
     localStorage.setItem("lumina_photographer_profile_data", JSON.stringify(parsed));
 
     alert(`✅ 已向攝影師【${photographerInfo.name}】提出報價單索取申請！請靜候攝影師審核。`);
+  };
+
+  const handleSelectDateFromSchedule = (dateKey: string) => {
+    setSelectedScheduleDate(dateKey);
   };
 
   const photos = photographerInfo.portfolioImages || DEFAULT_PORTFOLIO;
@@ -317,7 +327,6 @@ function PhotographerProfileContent({
 
         {/* 3. 兩欄式主體內容 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* 左欄：攝影風格、交付條款與設備 */}
           <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
             <h3 className="text-sm font-bold text-stone-900 border-b border-stone-200 pb-2">
               攝影風格與合作規範
@@ -396,9 +405,8 @@ function PhotographerProfileContent({
             </div>
           </div>
 
-          {/* 右欄：公開社群 + ★ 下方新增精選作品集相簿（最多 9 張） */}
           <div className="space-y-6">
-            {/* 1. 公開社群與外站作品集 */}
+            {/* 公開社群與外站作品集 */}
             <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
               <div className="border-b border-stone-200 pb-2 flex justify-between items-center">
                 <h3 className="text-sm font-bold text-stone-900">
@@ -485,7 +493,7 @@ function PhotographerProfileContent({
               </div>
             </div>
 
-            {/* ★ 2. 精選作品集相簿（最多 9 張） */}
+            {/* 精選作品集相簿 */}
             <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
               <div className="flex justify-between items-center border-b border-stone-200 pb-2">
                 <div>
@@ -528,7 +536,37 @@ function PhotographerProfileContent({
           </div>
         </div>
 
-        {/* 4. 模特同行專屬備忘手札 */}
+        {/* 攝影師開放檔期與預約日曆模組 */}
+        <div className="space-y-3">
+          <PhotographerPublicSchedule
+            scheduleData={scheduleData}
+            onSelectDate={handleSelectDateFromSchedule}
+          />
+          {selectedScheduleDate && (
+            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-2xs">
+              <div className="text-xs">
+                <span className="font-bold text-indigo-950 flex items-center gap-1.5">
+                  <span>📅</span>
+                  <span>您已選定預約日期：<strong className="font-mono text-sm text-indigo-700">{selectedScheduleDate}</strong></span>
+                </span>
+                <p className="text-[11px] text-indigo-800/80 mt-0.5">
+                  該日目前標示為「可預約」，您可透過約拍提案向攝影師正式發起預約。
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  alert(`已將日期 ${selectedScheduleDate} 記錄，可於發起約拍時直接填寫！`);
+                }}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
+              >
+                帶入此日期發起約拍
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 模特同行專屬備忘手札 */}
         <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-4">
           <div className="flex justify-between items-center border-b border-stone-200 pb-2">
             <div>
@@ -577,9 +615,12 @@ function PhotographerProfileContent({
             </div>
           )}
         </div>
+
+        {/* 5. 全新整合：外拍履約公開評價卡片（包含爭議屏蔽狀態） */}
+        <PublicReviewsSection targetName={photographerInfo.name} />
       </div>
 
-      {/* ★ 報價單彈窗 */}
+      {/* 報價單彈窗 */}
       {isRateCardModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-[#fbfaf8] border border-stone-200 rounded-2xl max-w-xl w-full p-6 shadow-2xl max-h-[92vh] flex flex-col">
@@ -678,7 +719,7 @@ function PhotographerProfileContent({
         </div>
       )}
 
-      {/* ★ 作品集全螢幕檢視彈窗 */}
+      {/* 作品集全螢幕檢視彈窗 */}
       {selectedPhoto && (
         <div
           className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"

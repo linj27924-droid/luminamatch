@@ -9,6 +9,7 @@ import BookingForm from "../../../components/model-detail/BookingForm";
 import PortfolioSection from "../../../components/model-detail/PortfolioSection";
 import PeerReviewSection, { PeerReview } from "../../../components/model-detail/PeerReviewSection";
 import RateCardModal from "../../../components/model-detail/RateCardModal";
+import PublicReviewsSection from "../../../components/reviews/PublicReviewsSection";
 
 interface TimedReleaseTask {
   id: string;
@@ -352,7 +353,7 @@ function ModelDetailContent({
               handleBooking={handleBooking}
             />
 
-            {/* ★ 獨立模組：顯示在發起拍攝合作協議正下方的 9 張精選相簿 ★ */}
+            {/* 獨立模組：顯示在發起拍攝合作協議正下方的 9 張精選相簿 */}
             <PortfolioSection
               portfolioImages={modelInfo.portfolioImages}
               modelName={modelInfo.name}
@@ -365,6 +366,9 @@ function ModelDetailContent({
           currentUserRole={currentUserRole}
           photographerReviews={photographerReviews}
         />
+
+        {/* ★ 全新整合：外拍履約公開評價卡片（包含爭議屏蔽狀態） ★ */}
+        <PublicReviewsSection targetName={modelInfo.name} />
       </div>
 
       <RateCardModal

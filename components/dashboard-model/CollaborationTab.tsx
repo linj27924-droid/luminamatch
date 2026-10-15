@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import CollabOutfitsSection from "../collaboration/CollabOutfitsSection";
+import CollabChatBox from "../collaboration/CollabChatBox";
 import ProjectReviewModal, { ReviewSubmitData } from "../reviews/ProjectReviewModal";
 
 export type CollabCategory = "invite" | "tfcd" | "commercial";
@@ -231,7 +232,6 @@ export default function CollaborationTab({
   const [innerTab, setInnerTab] = useState<"active" | "history">("active");
   const [selectedCategory, setSelectedCategory] = useState<"all" | CollabCategory>("all");
   const [activeCollabId, setActiveCollabId] = useState<string>("");
-  const [newMessage, setNewMessage] = useState("");
   const [copiedCaseNum, setCopiedCaseNum] = useState<string | null>(null);
 
   // 評價與同業手札 Modal 狀態
@@ -320,15 +320,15 @@ export default function CollaborationTab({
     });
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !activeProject) return;
+  // 聊天室發送訊息函式
+  const handleSendMessage = (text: string) => {
+    if (!activeProject) return;
 
     const msg = {
       id: `msg_${Date.now()}`,
       sender: "model" as const,
       senderName: currentModelName,
-      text: newMessage.trim(),
+      text: text,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
@@ -336,7 +336,6 @@ export default function CollaborationTab({
       c.id === activeProject.id ? { ...c, messages: [...(c.messages || []), msg] } : c
     );
     saveToStorage(updated);
-    setNewMessage("");
   };
 
   // 服裝挑選操作呼叫子組件
@@ -961,7 +960,7 @@ export default function CollaborationTab({
                       </div>
                     </div>
 
-                    {/* 3. 拍攝服裝挑選（★ 引用拆分後之子組件） */}
+                    {/* 3. 拍攝服裝挑選（★ 引用子組件） */}
                     <CollabOutfitsSection
                       outfits={activeProject.outfits || []}
                       userRole="model"
@@ -1040,65 +1039,13 @@ export default function CollaborationTab({
                     </div>
                   </div>
 
-                  {/* 右側一欄：案件即時留言溝通 */}
-                  <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-5 shadow-sm flex flex-col h-[760px]">
-                    <div className="pb-3 border-b border-stone-200 flex justify-between items-center">
-                      <div>
-                        <h4 className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
-                          <span>💬</span>
-                          <span>案件即時留言溝通</span>
-                        </h4>
-                        <p className="text-[10px] text-stone-400 mt-0.5">
-                          對象：<strong>{activeProject.photographerName}</strong>
-                        </p>
-                      </div>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto space-y-3 py-3 pr-1">
-                      {(!activeProject.messages || activeProject.messages.length === 0) ? (
-                        <div className="text-center py-16 text-xs text-stone-400">
-                          尚無留言紀錄，可在此與攝影師溝通當日細節。
-                        </div>
-                      ) : (
-                        activeProject.messages.map((m) => {
-                          const isMe = m.sender === "model";
-                          return (
-                            <div key={m.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-                              <span className="text-[10px] text-stone-400 mb-0.5">
-                                {m.senderName} · {m.timestamp}
-                              </span>
-                              <div
-                                className={`p-3 rounded-2xl text-xs max-w-[85%] leading-relaxed ${
-                                  isMe
-                                    ? "bg-indigo-600 text-white rounded-tr-none shadow-xs"
-                                    : "bg-white border border-stone-200 text-stone-800 rounded-tl-none shadow-2xs"
-                                }`}
-                              >
-                                {m.text}
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-
-                    <form onSubmit={handleSendMessage} className="pt-2 border-t border-stone-200 flex gap-2">
-                      <input
-                        type="text"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="輸入訊息（例：我已搭車出發）..."
-                        className="flex-1 text-xs bg-white text-stone-800 border border-stone-300 rounded-xl p-2.5 outline-none focus:border-indigo-500"
-                      />
-                      <button
-                        type="submit"
-                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
-                      >
-                        送出
-                      </button>
-                    </form>
-                  </div>
+                  {/* 右側一欄：案件即時留言溝通（★ 引用拆分後的 CollabChatBox 子組件） */}
+                  <CollabChatBox
+                    partnerName={activeProject.photographerName}
+                    currentUserRole="model"
+                    messages={activeProject.messages || []}
+                    onSendMessage={handleSendMessage}
+                  />
                 </div>
               )}
             </>
@@ -1116,7 +1063,7 @@ export default function CollaborationTab({
           }}
           caseNumber={targetReviewCase.caseNumber}
           targetName={targetReviewCase.targetName}
-          targetRole="photographer"
+          targetRole="model"
           onSubmitReview={(data) => {
             setReviewedCases((prev) => (prev.includes(data.caseNumber) ? prev : [...prev, data.caseNumber]));
           }}

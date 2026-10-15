@@ -8,6 +8,7 @@ import ScheduleTab, { CustomScheduleStatus, TimedReleaseTask } from "../../../co
 import BlacklistTab, { BlacklistedItem } from "../../../components/dashboard-model/BlacklistTab";
 import RateCardTab, { RateCardRequest } from "../../../components/dashboard-model/RateCardTab";
 import CollaborationTab, { CollaborationProject } from "../../../components/dashboard-model/CollaborationTab";
+import ReviewsManagerTab from "../../../components/reviews/ReviewsManagerTab";
 
 interface BookingRequest {
   id: string;
@@ -31,7 +32,7 @@ interface BookingRequest {
 
 export default function ModelDashboardPage() {
   const [activeTab, setActiveTab] = useState<
-    "profile" | "collaboration" | "rate_card" | "schedule" | "contract_templates" | "blacklist"
+    "profile" | "collaboration" | "rate_card" | "contract_templates" | "reviews_manager" | "schedule" | "blacklist"
   >("profile");
 
   // ==================== 0. 合約模板與商案定金狀態 ====================
@@ -151,7 +152,6 @@ export default function ModelDashboardPage() {
     setReviewContent("合作非常順利且尊重個人邊界，動作口頭引導精準，非常推薦！");
   };
 
-  // 確認同意約拍（已補齊 caseNumber 與 category 相容性）
   const confirmAccept = () => {
     if (!selectedReq) return;
     setBookingRequests((prev) =>
@@ -229,7 +229,7 @@ export default function ModelDashboardPage() {
     alert(`⭐ 已成功為【${selectedReq.photographerName}】留下同行評價紀錄！`);
   };
 
-  // ==================== 2. 合作專案協作室狀態（補齊預設 caseNumber 與 category） ====================
+  // ==================== 2. 合作專案協作室狀態 ====================
   const [collaborations, setCollaborations] = useState<CollaborationProject[]>([
     {
       id: "collab_1",
@@ -734,6 +734,19 @@ export default function ModelDashboardPage() {
               >
                 ⚙️ 合約模板
               </button>
+
+              {/* ★ 新增：信用評分管理模組按鈕 ★ */}
+              <button
+                onClick={() => setActiveTab("reviews_manager")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  activeTab === "reviews_manager"
+                    ? "bg-white dark:bg-stone-900 text-indigo-700 dark:text-indigo-400 shadow-xs"
+                    : "text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white"
+                }`}
+              >
+                ⭐ 信用評分管理
+              </button>
+
               <button
                 onClick={() => setActiveTab("schedule")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -744,6 +757,7 @@ export default function ModelDashboardPage() {
               >
                 📅 檔期標籤
               </button>
+
               <button
                 onClick={() => setActiveTab("blacklist")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -824,6 +838,14 @@ export default function ModelDashboardPage() {
             depositPolicy={depositPolicy}
             setDepositPolicy={setDepositPolicy}
             handleSaveGlobalTemplates={handleSaveGlobalTemplates}
+          />
+        )}
+
+        {/* ★ 新增：信用評分管理分頁內容渲染 ★ */}
+        {activeTab === "reviews_manager" && (
+          <ReviewsManagerTab
+            currentUserName={modelProfile.name || "羽晴 (Hane)"}
+            currentUserRole="model"
           />
         )}
 

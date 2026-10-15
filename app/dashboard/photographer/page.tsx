@@ -7,6 +7,8 @@ import PhotographerReviewsTab, { PhotographerReceivedReview } from "../../../com
 import PhotographerRateCardTab, { RateCardRequestItem, ModelRateCardResponseItem } from "../../../components/dashboard-photographer/PhotographerRateCardTab";
 import CommercialContractTab, { DEFAULT_COMMERCIAL_CONTRACT } from "../../../components/dashboard-photographer/CommercialContractTab";
 import PhotographerCollaborationTab, { CollaborationProject } from "../../../components/dashboard-photographer/PhotographerCollaborationTab";
+import PhotographerScheduleTab from "../../../components/dashboard-photographer/PhotographerScheduleTab";
+import ReviewsManagerTab from "../../../components/reviews/ReviewsManagerTab";
 
 const DEFAULT_PROJECTS: CollaborationProject[] = [
   {
@@ -158,7 +160,9 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
 ];
 
 export default function PhotographerDashboardPage() {
-  const [activeTab, setActiveTab] = useState<"profile" | "rate_card" | "collab" | "contract" | "template" | "reviews">("profile");
+  const [activeTab, setActiveTab] = useState<
+    "profile" | "rate_card" | "collab" | "schedule" | "contract" | "template" | "reviews_manager" | "reviews"
+  >("profile");
 
   const [photographerProfile, setPhotographerProfile] = useState({
     name: "陳攝影 (Alan Chen)",
@@ -234,6 +238,12 @@ export default function PhotographerDashboardPage() {
     },
   ]);
 
+  const [scheduleData, setScheduleData] = useState<Record<string, { status: "available" | "busy" | "off"; note?: string }>>({
+    "2026-10-18": { status: "busy", note: "大稻埕復古街拍專案" },
+    "2026-10-24": { status: "busy", note: "秋季時裝外拍" },
+    "2026-10-30": { status: "busy", note: "商案型錄拍攝" },
+  });
+
   const [contractTitle, setContractTitle] = useState("標準商業攝影委託暨肖像授權合約");
   const [contractBody, setContractBody] = useState(DEFAULT_COMMERCIAL_CONTRACT);
   const [depositRate, setDepositRate] = useState("30%");
@@ -292,6 +302,7 @@ export default function PhotographerDashboardPage() {
         if (parsed.contractBody) setContractBody(parsed.contractBody);
         if (parsed.depositRate) setDepositRate(parsed.depositRate);
         if (parsed.revisionLimit !== undefined) setRevisionLimit(parsed.revisionLimit);
+        if (parsed.scheduleData) setScheduleData(parsed.scheduleData);
       } catch (e) {
         console.error(e);
       }
@@ -331,6 +342,7 @@ export default function PhotographerDashboardPage() {
       contractBody,
       depositRate,
       revisionLimit,
+      scheduleData,
       ...partial,
     };
     localStorage.setItem("lumina_photographer_profile_data", JSON.stringify(dataToSave));
@@ -350,6 +362,12 @@ export default function PhotographerDashboardPage() {
     localStorage.setItem("lumina_collaboration_events", JSON.stringify(updatedEvents));
 
     alert(`✅ 攝影師檔案已儲存！所有專案已同步更新為：【${photographerProfile.name}】！`);
+  };
+
+  const handleUpdateSchedule = (dateKey: string, status: "available" | "busy" | "off", note?: string) => {
+    const updated = { ...scheduleData, [dateKey]: { status, note } };
+    setScheduleData(updated);
+    saveAllData({ scheduleData: updated });
   };
 
   const handleSaveRateCardConfig = (e: React.FormEvent) => {
@@ -504,7 +522,6 @@ export default function PhotographerDashboardPage() {
     alert(`✅ 已送出【${type === "deposit" ? "30% 簽約定金" : "結案尾款"}】請款通知（NT$ ${amount}）！`);
   };
 
-  // ★ 攝影師正式交付成品雲端載點
   const handleDeliverPhotos = (eventId: string, cloudUrl: string, password?: string, notes?: string) => {
     const nowStr = new Date().toISOString().slice(5, 16).replace("T", " ");
     const updated = collabEvents.map((evt) => {
@@ -628,6 +645,14 @@ export default function PhotographerDashboardPage() {
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
             </button>
             <button
+              onClick={() => setActiveTab("schedule")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                activeTab === "schedule" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              📅 檔期月曆
+            </button>
+            <button
               onClick={() => setActiveTab("contract")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                 activeTab === "contract" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
@@ -642,6 +667,14 @@ export default function PhotographerDashboardPage() {
               }`}
             >
               📝 預設提案範本
+            </button>
+            <button
+              onClick={() => setActiveTab("reviews_manager")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                activeTab === "reviews_manager" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              ⭐ 信用評分管理
             </button>
             <button
               onClick={() => setActiveTab("reviews")}
@@ -685,7 +718,6 @@ export default function PhotographerDashboardPage() {
           />
         )}
 
-        {/* 履約協作分頁 */}
         {activeTab === "collab" && (
           <PhotographerCollaborationTab
             events={collabEvents}
@@ -699,6 +731,13 @@ export default function PhotographerDashboardPage() {
             handleSendInvoiceNotice={handleSendInvoiceNotice}
             handleFinalizeProject={handleFinalizeProject}
             handleDeliverPhotos={handleDeliverPhotos}
+          />
+        )}
+
+        {activeTab === "schedule" && (
+          <PhotographerScheduleTab
+            scheduleData={scheduleData}
+            onUpdateSchedule={handleUpdateSchedule}
           />
         )}
 
@@ -721,6 +760,13 @@ export default function PhotographerDashboardPage() {
             proposalTemplate={proposalTemplate}
             setProposalTemplate={setProposalTemplate}
             handleSaveProposalTemplate={handleSaveProposalTemplate}
+          />
+        )}
+
+        {activeTab === "reviews_manager" && (
+          <ReviewsManagerTab
+            currentUserName={photographerProfile.name}
+            currentUserRole="photographer"
           />
         )}
 
