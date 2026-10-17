@@ -6,7 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 
 interface MockUser {
   username: string;
-  role: "model" | "photographer";
+  role: "model" | "photographer" | "client";
   name: string;
   id: string;
 }
@@ -21,7 +21,7 @@ export default function NavigationBar() {
     if (savedUser) {
       try {
         const u = JSON.parse(savedUser);
-        if (u && (u.role === "model" || u.role === "photographer")) {
+        if (u && (u.role === "model" || u.role === "photographer" || u.role === "client")) {
           if (u.role === "model") {
             const savedModelProfile = localStorage.getItem("lumina_model_profile_data");
             if (savedModelProfile) {
@@ -61,7 +61,7 @@ export default function NavigationBar() {
 
   return (
     <header className="h-[65px] bg-stone-900/90 backdrop-blur-md border-b border-stone-800/80 sticky top-0 z-40 px-4 sm:px-8 flex items-center justify-between transition-colors">
-      {/* 左側：LOGO 與探索大廳 */}
+      {/* 左側：LOGO 與探索大廳、商案大廳 */}
       <div className="flex items-center gap-6">
         <Link href="/" className="font-bold text-base tracking-tight text-stone-100 flex items-center gap-2 group">
           <span className="w-2.5 h-2.5 rounded-full bg-indigo-500/90 shadow-[0_0_8px_rgba(99,102,241,0.5)] group-hover:scale-110 transition-transform"></span>
@@ -79,6 +79,19 @@ export default function NavigationBar() {
           >
             探索大廳
           </Link>
+
+          {/* ★ 新增：商案發案大廳入口 ★ */}
+          <Link
+            href="/jobs"
+            className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 ${
+              pathname.startsWith("/jobs")
+                ? "bg-stone-800/90 text-indigo-300 font-semibold shadow-xs border border-indigo-900/40"
+                : "text-stone-400 hover:text-stone-200 hover:bg-stone-800/50"
+            }`}
+          >
+            <span>💼</span>
+            <span>商案大廳</span>
+          </Link>
         </nav>
       </div>
 
@@ -86,63 +99,78 @@ export default function NavigationBar() {
       <div className="flex items-center gap-2.5">
         {currentUser ? (
           <div className="flex items-center gap-2">
+            {/* 模特專屬：個人主頁與後台 */}
             {currentUser.role === "model" && (
-              <Link
-                href={`/model/${modelProfileId}`}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition border flex items-center gap-1.5 ${
-                  pathname === `/model/${modelProfileId}`
-                    ? "bg-emerald-950/70 border-emerald-700/80 text-emerald-200 font-semibold shadow-xs"
-                    : "bg-stone-850/80 hover:bg-emerald-950/40 text-stone-300 hover:text-emerald-300 border-stone-750 hover:border-emerald-800/60"
-                }`}
-                title="檢視訪客在大廳與個人主頁看到的實際效果"
-              >
-                <span className="text-[13px] opacity-80">👁️</span>
-                <span>個人主頁</span>
-              </Link>
+              <>
+                <Link
+                  href={`/model/${modelProfileId}`}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition border flex items-center gap-1.5 ${
+                    pathname === `/model/${modelProfileId}`
+                      ? "bg-emerald-950/70 border-emerald-700/80 text-emerald-200 font-semibold shadow-xs"
+                      : "bg-stone-850/80 hover:bg-emerald-950/40 text-stone-300 hover:text-emerald-300 border-stone-750 hover:border-emerald-800/60"
+                  }`}
+                  title="檢視訪客在大廳與個人主頁看到的實際效果"
+                >
+                  <span className="text-[13px] opacity-80">👁️</span>
+                  <span>個人主頁</span>
+                </Link>
+
+                <Link
+                  href="/dashboard/model"
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition border flex items-center gap-1.5 ${
+                    pathname.startsWith("/dashboard/model")
+                      ? "bg-stone-800 border-stone-700 text-stone-100 font-semibold shadow-xs"
+                      : "bg-stone-850/80 hover:bg-stone-800 text-stone-300 hover:text-stone-100 border-stone-750"
+                  }`}
+                >
+                  <span>📅</span>
+                  <span>模特後台</span>
+                </Link>
+              </>
             )}
 
-            {currentUser.role === "model" && (
-              <Link
-                href="/dashboard/model"
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition border flex items-center gap-1.5 ${
-                  pathname.startsWith("/dashboard/model")
-                    ? "bg-stone-800 border-stone-700 text-stone-100 font-semibold shadow-xs"
-                    : "bg-stone-850/80 hover:bg-stone-800 text-stone-300 hover:text-stone-100 border-stone-750"
-                }`}
-              >
-                <span>📅</span>
-                <span>模特後台</span>
-              </Link>
-            )}
-
-            {/* 攝影師專屬按鍵：個人主頁 */}
+            {/* 攝影師專屬：個人主頁與後台 */}
             {currentUser.role === "photographer" && (
-              <Link
-                href={`/photographer/${encodeURIComponent(photographerProfileId)}`}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition border flex items-center gap-1.5 ${
-                  pathname.startsWith("/photographer")
-                    ? "bg-emerald-950/70 border-emerald-700/80 text-emerald-200 font-semibold shadow-xs"
-                    : "bg-stone-850/80 hover:bg-emerald-950/40 text-stone-300 hover:text-emerald-300 border-stone-750 hover:border-emerald-800/60"
-                }`}
-                title="檢視訪客在大廳與個人主頁看到的實際效果"
-              >
-                <span className="text-[13px] opacity-80">👁️</span>
-                <span>個人主頁</span>
-              </Link>
+              <>
+                <Link
+                  href={`/photographer/${encodeURIComponent(photographerProfileId)}`}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition border flex items-center gap-1.5 ${
+                    pathname.startsWith("/photographer")
+                      ? "bg-emerald-950/70 border-emerald-700/80 text-emerald-200 font-semibold shadow-xs"
+                      : "bg-stone-850/80 hover:bg-emerald-950/40 text-stone-300 hover:text-emerald-300 border-stone-750 hover:border-emerald-800/60"
+                  }`}
+                  title="檢視訪客在大廳與個人主頁看到的實際效果"
+                >
+                  <span className="text-[13px] opacity-80">👁️</span>
+                  <span>個人主頁</span>
+                </Link>
+
+                <Link
+                  href="/dashboard/photographer"
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition border flex items-center gap-1.5 ${
+                    pathname.startsWith("/dashboard/photographer")
+                      ? "bg-stone-800 border-stone-700 text-stone-100 font-semibold shadow-xs"
+                      : "bg-stone-850/80 hover:bg-stone-800 text-stone-300 hover:text-stone-100 border-stone-750"
+                  }`}
+                >
+                  <span>📷</span>
+                  <span>攝影後台</span>
+                </Link>
+              </>
             )}
 
-            {/* 攝影師專屬按鍵：攝影後台 */}
-            {currentUser.role === "photographer" && (
+            {/* ★ 業主/品牌方專屬：企業後台 ★ */}
+            {currentUser.role === "client" && (
               <Link
-                href="/dashboard/photographer"
+                href="/dashboard/client"
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition border flex items-center gap-1.5 ${
-                  pathname.startsWith("/dashboard/photographer")
-                    ? "bg-stone-800 border-stone-700 text-stone-100 font-semibold shadow-xs"
-                    : "bg-stone-850/80 hover:bg-stone-800 text-stone-300 hover:text-stone-100 border-stone-750"
+                  pathname.startsWith("/dashboard/client")
+                    ? "bg-indigo-950/70 border-indigo-700/80 text-indigo-200 font-semibold shadow-xs"
+                    : "bg-stone-850/80 hover:bg-indigo-950/40 text-stone-300 hover:text-indigo-300 border-stone-750 hover:border-indigo-800/60"
                 }`}
               >
-                <span>📷</span>
-                <span>攝影後台</span>
+                <span>🏢</span>
+                <span>企業後台</span>
               </Link>
             )}
 
@@ -151,7 +179,7 @@ export default function NavigationBar() {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
               <span className="text-stone-200 font-semibold">{currentUser.name}</span>
               <span className="text-[10px] text-stone-400 bg-stone-800/80 px-1.5 py-0.5 rounded border border-stone-700/60">
-                {currentUser.role === "model" ? "模特" : "攝影"}
+                {currentUser.role === "model" ? "模特" : currentUser.role === "photographer" ? "攝影" : "業主"}
               </span>
             </div>
 

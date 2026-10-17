@@ -17,7 +17,7 @@ export default function LoginPage() {
     const acc = account.trim();
     const pwd = password.trim();
 
-    // 驗證模特測試帳號
+    // 1. 驗證模特測試帳號
     if (acc === "aaa" && pwd === "123456") {
       const mockUser = {
         username: "aaa",
@@ -31,7 +31,7 @@ export default function LoginPage() {
       return;
     }
 
-    // 驗證攝影師測試帳號
+    // 2. 驗證攝影師測試帳號
     if (acc === "sss" && pwd === "123456") {
       const mockUser = {
         username: "sss",
@@ -42,6 +42,20 @@ export default function LoginPage() {
       localStorage.setItem("lumina_mock_user", JSON.stringify(mockUser));
       alert("✅ 攝影師測試帳號登入成功！即將前往攝影工作室後台。");
       router.push("/dashboard/photographer");
+      return;
+    }
+
+    // 3. 驗證業主/品牌方測試帳號
+    if (acc === "ccc" && pwd === "123456") {
+      const mockUser = {
+        username: "ccc",
+        role: "client",
+        name: "風格服飾品牌 (Flora Studio)",
+        id: "flora_studio",
+      };
+      localStorage.setItem("lumina_mock_user", JSON.stringify(mockUser));
+      alert("✅ 業主/品牌方測試帳號登入成功！即將前往業主發案後台。");
+      router.push("/dashboard/client");
       return;
     }
 
@@ -62,6 +76,12 @@ export default function LoginPage() {
     setErrorMsg("");
   };
 
+  const fillClientAccount = () => {
+    setAccount("ccc");
+    setPassword("123456");
+    setErrorMsg("");
+  };
+
   return (
     <main className="min-h-[calc(100vh-65px)] bg-stone-100/70 px-4 py-12 flex items-center justify-center">
       <div className="max-w-md w-full bg-[#fbfaf8] border border-stone-300 rounded-2xl p-8 shadow-sm space-y-6">
@@ -73,25 +93,33 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* 測試帳號快速點選卡片 */}
+        {/* 測試帳號快速點選卡片 (三欄對齊) */}
         <div className="bg-[#f5f3ef] border border-stone-300 rounded-xl p-3.5 space-y-2 text-xs">
           <span className="font-bold text-stone-800 block">✦ 點擊快速帶入測試帳密：</span>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={fillModelAccount}
-              className="p-2 bg-white hover:bg-stone-100 border border-stone-300 rounded-lg text-left transition"
+              className="p-2 bg-white hover:bg-stone-100 border border-stone-300 rounded-lg text-left transition cursor-pointer"
             >
-              <div className="font-bold text-stone-800">👩‍🦰 模特端測試帳號</div>
-              <div className="text-[11px] text-stone-500 font-mono mt-0.5">aaa / 123456</div>
+              <div className="font-bold text-stone-800 text-[11px] truncate">👩‍🦰 模特端</div>
+              <div className="text-[10px] text-stone-500 font-mono mt-0.5">aaa / 123456</div>
             </button>
             <button
               type="button"
               onClick={fillPhotographerAccount}
-              className="p-2 bg-white hover:bg-stone-100 border border-stone-300 rounded-lg text-left transition"
+              className="p-2 bg-white hover:bg-stone-100 border border-stone-300 rounded-lg text-left transition cursor-pointer"
             >
-              <div className="font-bold text-stone-800">📸 攝影端測試帳號</div>
-              <div className="text-[11px] text-stone-500 font-mono mt-0.5">sss / 123456</div>
+              <div className="font-bold text-stone-800 text-[11px] truncate">📸 攝影端</div>
+              <div className="text-[10px] text-stone-500 font-mono mt-0.5">sss / 123456</div>
+            </button>
+            <button
+              type="button"
+              onClick={fillClientAccount}
+              className="p-2 bg-white hover:bg-stone-100 border border-stone-300 rounded-lg text-left transition cursor-pointer"
+            >
+              <div className="font-bold text-stone-800 text-[11px] truncate">🏢 品牌業主</div>
+              <div className="text-[10px] text-stone-500 font-mono mt-0.5">ccc / 123456</div>
             </button>
           </div>
         </div>
