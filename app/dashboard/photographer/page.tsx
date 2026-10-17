@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import PhotographerProfileTab, { PhotographerSocialLinks } from "../../../components/dashboard-photographer/PhotographerProfileTab";
 import ProposalTemplateTab from "../../../components/dashboard-photographer/ProposalTemplateTab";
 import PhotographerReviewsTab, { PhotographerReceivedReview } from "../../../components/dashboard-photographer/PhotographerReviewsTab";
@@ -9,6 +9,8 @@ import CommercialContractTab, { DEFAULT_COMMERCIAL_CONTRACT } from "../../../com
 import PhotographerCollaborationTab, { CollaborationProject } from "../../../components/dashboard-photographer/PhotographerCollaborationTab";
 import PhotographerScheduleTab from "../../../components/dashboard-photographer/PhotographerScheduleTab";
 import ReviewsManagerTab from "../../../components/reviews/ReviewsManagerTab";
+import PhotographerInvitationTrackerTab from "../../../components/dashboard-photographer/PhotographerInvitationTrackerTab";
+import { CollaborationInvite } from "../../../types/invitation";
 
 const DEFAULT_PROJECTS: CollaborationProject[] = [
   {
@@ -161,7 +163,7 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
 
 export default function PhotographerDashboardPage() {
   const [activeTab, setActiveTab] = useState<
-    "profile" | "rate_card" | "collab" | "schedule" | "contract" | "template" | "reviews_manager" | "reviews"
+    "profile" | "invitations" | "rate_card" | "collab" | "schedule" | "contract" | "template" | "reviews_manager" | "reviews"
   >("profile");
 
   const [photographerProfile, setPhotographerProfile] = useState({
@@ -237,6 +239,107 @@ export default function PhotographerDashboardPage() {
       status: "pending",
     },
   ]);
+
+  // ==================== ★ 新增：邀約進度資料 ★ ====================
+  const [invitations, setInvitations] = useState<CollaborationInvite[]>([
+    {
+      id: "inv_p1",
+      senderId: "Alan Chen",
+      senderName: "陳攝影 (Alan Chen)",
+      senderRole: "photographer",
+      recipientId: "mina",
+      recipientName: "米娜 (Mina)",
+      recipientRole: "model",
+      projectTitle: "北美館秋季極簡時裝創作",
+      proposedDate: "2026-11-08",
+      proposedBudget: "互惠創作 (TFCD)",
+      message: "米娜您好！欣賞您極簡俐落的肢體表現，希望邀約一組北美館戶外秋季大衣創作，棚燈自備。",
+      status: "pending",
+      createdAt: "2026-10-16 11:00",
+      updatedAt: "2026-10-16 11:00",
+    },
+    {
+      id: "inv_p2",
+      senderId: "flora_studio",
+      senderName: "風格服飾品牌 (Flora Studio)",
+      senderRole: "client",
+      recipientId: "Alan Chen",
+      recipientName: "陳攝影 (Alan Chen)",
+      recipientRole: "photographer",
+      projectTitle: "電商新品白底商品棚拍",
+      proposedDate: "2026-11-12",
+      proposedBudget: "NT$ 12,000",
+      message: "陳攝影您好，我們有批冬季飾品需要純白底去背與特寫拍攝，希望能與您配合！",
+      status: "pending",
+      createdAt: "2026-10-17 09:30",
+      updatedAt: "2026-10-17 09:30",
+    },
+  ]);
+
+  const handleAcceptInvite = (invite: CollaborationInvite) => {
+    setInvitations((prev) =>
+      prev.map((i) => (i.id === invite.id ? { ...i, status: "accepted" as const } : i))
+    );
+
+    const newCollab: CollaborationProject = {
+      id: `collab_${Date.now()}`,
+      caseNumber: `COL-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(100 + Math.random() * 900)}`,
+      title: invite.projectTitle,
+      category: "commercial",
+      modelName: invite.senderName,
+      shootDate: invite.proposedDate,
+      exactTime: `${invite.proposedDate} 準時集合`,
+      exactLocation: "約定集合地點",
+      coopType: "商業受託合作",
+      remuneration: invite.proposedBudget,
+      deliveryDays: 14,
+      bankInfo: {
+        bankCode: "822",
+        bankName: "中國信託",
+        accountNumber: "1234-5678-9012",
+        accountName: "陳攝影工作室",
+      },
+      outfits: [
+        {
+          id: `outfit_${Date.now()}`,
+          title: "專案約定拍攝內容",
+          description: invite.message,
+          modelConfirmed: true,
+          photographerConfirmed: true,
+          status: "confirmed",
+        },
+      ],
+      checkInStatus: { modelCheckedIn: false, photographerCheckedIn: false },
+      paymentStatus: "unpaid",
+      status: "confirmed",
+      messages: [
+        {
+          id: `m_${Date.now()}`,
+          sender: "photographer",
+          senderName: photographerProfile.name,
+          text: `您好【${invite.senderName}】！已接受您的合作邀約，歡迎在此討論專案細節！`,
+          timestamp: "剛剛",
+        },
+      ],
+    };
+
+    const updatedCollabs = [newCollab, ...collabEvents];
+    setCollabEvents(updatedCollabs);
+    localStorage.setItem("lumina_collaboration_events", JSON.stringify(updatedCollabs));
+    alert(`🎉 已正式接受【${invite.senderName}】的約拍！專案已同步建立至「履約協作」！`);
+  };
+
+  const handleDeclineInvite = (inviteId: string) => {
+    setInvitations((prev) =>
+      prev.map((i) => (i.id === inviteId ? { ...i, status: "declined" as const } : i))
+    );
+    alert("已婉拒該約拍委託。");
+  };
+
+  const handleCancelSentInvite = (inviteId: string) => {
+    setInvitations((prev) => prev.filter((i) => i.id !== inviteId));
+    alert("已成功撤回該邀約！");
+  };
 
   const [scheduleData, setScheduleData] = useState<Record<string, { status: "available" | "busy" | "off"; note?: string }>>({
     "2026-10-18": { status: "busy", note: "大稻埕復古街拍專案" },
@@ -605,12 +708,22 @@ export default function PhotographerDashboardPage() {
 
   const pendingIncomingCount = incomingRequests.filter((r) => r.status === "pending").length;
 
+  // 未處理邀約統計（我發出的待回覆 + 收到的待處理）
+  const totalPendingInvitesCount = useMemo(() => {
+    const pendingSent = invitations.filter((i) => i.senderRole === "photographer" && i.status === "pending").length;
+    const pendingReceived = invitations.filter((i) => i.recipientRole === "photographer" && i.status === "pending").length;
+    return pendingSent + pendingReceived;
+  }, [invitations]);
+
   return (
     <main className="min-h-[calc(100vh-65px)] bg-stone-100/70 px-4 py-8">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-xl font-bold text-stone-800">攝影工作室後台</h2>
+            <p className="text-xs text-stone-500 mt-1">
+              管理合作提案進度、履約協作、檔期日曆與商案合約
+            </p>
           </div>
 
           <div className="flex flex-wrap bg-[#edeae3]/80 p-1 rounded-xl border border-stone-300">
@@ -622,6 +735,22 @@ export default function PhotographerDashboardPage() {
             >
               📷 攝影師檔案
             </button>
+
+            {/* ★ 新增：邀約進度按鈕（含未處理項目數量統計） ★ */}
+            <button
+              onClick={() => setActiveTab("invitations")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "invitations" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <span>📫 邀約進度</span>
+              {totalPendingInvitesCount > 0 && (
+                <span className="w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold shadow-2xs animate-pulse">
+                  {totalPendingInvitesCount}
+                </span>
+              )}
+            </button>
+
             <button
               onClick={() => setActiveTab("rate_card")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
@@ -635,6 +764,7 @@ export default function PhotographerDashboardPage() {
                 </span>
               )}
             </button>
+
             <button
               onClick={() => setActiveTab("collab")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
@@ -644,6 +774,7 @@ export default function PhotographerDashboardPage() {
               <span>🤝 履約協作</span>
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
             </button>
+
             <button
               onClick={() => setActiveTab("schedule")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -652,6 +783,7 @@ export default function PhotographerDashboardPage() {
             >
               📅 檔期月曆
             </button>
+
             <button
               onClick={() => setActiveTab("contract")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -660,6 +792,7 @@ export default function PhotographerDashboardPage() {
             >
               📜 商案合約
             </button>
+
             <button
               onClick={() => setActiveTab("template")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -668,6 +801,7 @@ export default function PhotographerDashboardPage() {
             >
               📝 預設提案範本
             </button>
+
             <button
               onClick={() => setActiveTab("reviews_manager")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -676,6 +810,7 @@ export default function PhotographerDashboardPage() {
             >
               ⭐ 信用評分管理
             </button>
+
             <button
               onClick={() => setActiveTab("reviews")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -699,6 +834,17 @@ export default function PhotographerDashboardPage() {
             handleAddStyle={handleAddStyle}
             handleRemoveStyle={handleRemoveStyle}
             handleSaveProfile={handleSaveProfile}
+          />
+        )}
+
+        {/* ★ 新增：攝影端邀約進度看板渲染 ★ */}
+        {activeTab === "invitations" && (
+          <PhotographerInvitationTrackerTab
+            currentPhotographerName={photographerProfile.name}
+            invitations={invitations}
+            onAcceptInvite={handleAcceptInvite}
+            onDeclineInvite={handleDeclineInvite}
+            onCancelSentInvite={handleCancelSentInvite}
           />
         )}
 

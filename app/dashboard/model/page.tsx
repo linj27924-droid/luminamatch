@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
 import ProfileTab from "../../../components/dashboard-model/ProfileTab";
 import TemplateTab from "../../../components/dashboard-model/TemplateTab";
 import ScheduleTab, { CustomScheduleStatus, TimedReleaseTask } from "../../../components/dashboard-model/ScheduleTab";
@@ -9,35 +8,23 @@ import BlacklistTab, { BlacklistedItem } from "../../../components/dashboard-mod
 import RateCardTab, { RateCardRequest } from "../../../components/dashboard-model/RateCardTab";
 import CollaborationTab, { CollaborationProject } from "../../../components/dashboard-model/CollaborationTab";
 import ReviewsManagerTab from "../../../components/reviews/ReviewsManagerTab";
-
-interface BookingRequest {
-  id: string;
-  photographerName: string;
-  photographerRating: number;
-  photographerHistoryCount: number;
-  completionRate: string;
-  noShowCount: number;
-  date: string;
-  timeSlot: string;
-  location: string;
-  style: string;
-  coopType: "互惠創作 (TFCD)" | "商業有酬";
-  remuneration?: string;
-  notes: string;
-  status: "pending" | "accepted" | "declined" | "completed";
-  customContractText?: string;
-  modelReplyMessage?: string;
-  hasReviewed?: boolean;
-}
+import ModelInvitationTrackerTab, { BookingRequestItem } from "../../../components/dashboard-model/ModelInvitationTrackerTab";
+import { CollaborationInvite } from "../../../types/invitation";
 
 export default function ModelDashboardPage() {
   const [activeTab, setActiveTab] = useState<
-    "profile" | "collaboration" | "rate_card" | "contract_templates" | "reviews_manager" | "schedule" | "blacklist"
+    | "profile"
+    | "invitations"
+    | "collaboration"
+    | "rate_card"
+    | "contract_templates"
+    | "reviews_manager"
+    | "schedule"
+    | "blacklist"
   >("profile");
 
   // ==================== 0. 合約模板與商案定金狀態 ====================
   const [depositPolicy, setDepositPolicy] = useState("商案需預付 30% 定金保留檔期，拍攝結束當日結清尾款。");
-
   const [templateAcceptMessage, setTemplateAcceptMessage] = useState(
     "非常高興能與您合作！拍攝當天我會提早 10 分鐘抵達現場並自備好基礎底妝，請雙方共同遵守上述存證合約約定！"
   );
@@ -80,20 +67,8 @@ export default function ModelDashboardPage() {
     alert("✅ 商業合約、定金意向與常規模板已成功儲存！");
   };
 
-  // ==================== 1. 邀約審核抽屜與彈窗狀態 ====================
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedReq, setSelectedReq] = useState<BookingRequest | null>(null);
-  const [actionType, setActionType] = useState<"accept" | "decline" | "review" | null>(null);
-
-  const [contractText, setContractText] = useState("");
-  const [replyMessage, setReplyMessage] = useState("");
-  const [declineReason, setDeclineReason] = useState("");
-
-  const [reviewScore, setReviewScore] = useState(5.0);
-  const [reviewTags, setReviewTags] = useState<string[]>(["極度守時", "尊重邊界"]);
-  const [reviewContent, setReviewContent] = useState("");
-
-  const [bookingRequests, setBookingRequests] = useState<BookingRequest[]>([
+  // ==================== 1. 約拍邀請與主動邀約資料 ====================
+  const [bookingRequests, setBookingRequests] = useState<BookingRequestItem[]>([
     {
       id: "REQ-20261028-01",
       photographerName: "陳攝影 (Alan Chen)",
@@ -127,109 +102,86 @@ export default function ModelDashboardPage() {
     },
   ]);
 
-  const openAcceptModal = (req: BookingRequest) => {
-    setSelectedReq(req);
-    setActionType("accept");
-    if (req.coopType === "商業有酬") {
-      setContractText(commercialContractBody);
-    } else {
-      setContractText(templateContractBody);
-    }
-    setReplyMessage(templateAcceptMessage);
-  };
+  const [invitations, setInvitations] = useState<CollaborationInvite[]>([
+    {
+      id: "inv_1",
+      senderId: "hane",
+      senderName: "羽晴 (Hane)",
+      senderRole: "model",
+      recipientId: "Alan Chen",
+      recipientName: "陳攝影 (Alan Chen)",
+      recipientRole: "photographer",
+      projectTitle: "日系底片街拍創作 (大稻埕碼頭)",
+      proposedDate: "2026-11-02",
+      proposedBudget: "互惠創作 (TFCD)",
+      message: "您好！非常欣賞您的日系街拍光影，想詢問 11 月初是否有檔期能合作一組秋季底片創作？",
+      status: "pending",
+      createdAt: "2026-10-16 15:30",
+      updatedAt: "2026-10-16 15:30",
+    },
+  ]);
 
-  const openDeclineModal = (req: BookingRequest) => {
-    setSelectedReq(req);
-    setActionType("decline");
-    setDeclineReason(templateDeclineMessage);
-  };
-
-  const openReviewModal = (req: BookingRequest) => {
-    setSelectedReq(req);
-    setActionType("review");
-    setReviewScore(5.0);
-    setReviewTags(["極度守時", "完全零肢體觸碰", "溝通尊重專業"]);
-    setReviewContent("合作非常順利且尊重個人邊界，動作口頭引導精準，非常推薦！");
-  };
-
-  const confirmAccept = () => {
-    if (!selectedReq) return;
+  // 同意約拍邀請
+  const handleAcceptBooking = (req: BookingRequestItem, contractText: string, replyMessage: string) => {
     setBookingRequests((prev) =>
       prev.map((r) =>
-        r.id === selectedReq.id
-          ? {
-              ...r,
-              status: "accepted" as const,
-              customContractText: contractText,
-              modelReplyMessage: replyMessage,
-            }
+        r.id === req.id
+          ? { ...r, status: "accepted" as const, customContractText: contractText, modelReplyMessage: replyMessage }
           : r
       )
     );
 
-    const dateCode = (selectedReq.date || "").replace(/-/g, "") || "20261028";
+    const dateCode = (req.date || "").replace(/-/g, "") || "20261028";
     const seq = String(Math.floor(Math.random() * 900) + 100);
-    const resolvedCategory = selectedReq.coopType === "商業有酬" ? "commercial" : "tfcd";
+    const resolvedCategory = req.coopType === "商業有酬" ? "commercial" : "tfcd";
 
     const newCollab: CollaborationProject = {
       id: `collab_${Date.now()}`,
       caseNumber: `COL-${dateCode}-${seq}`,
       category: resolvedCategory as any,
-      bookingId: selectedReq.id,
-      photographerName: selectedReq.photographerName,
-      shootDate: selectedReq.date,
-      exactTime: `${selectedReq.timeSlot.split(" ")[0]} 準時集合`,
-      exactLocation: selectedReq.location,
+      bookingId: req.id,
+      photographerName: req.photographerName,
+      shootDate: req.date,
+      exactTime: `${req.timeSlot.split(" ")[0]} 準時集合`,
+      exactLocation: req.location,
       locationGuide: "請於約定地碰頭",
-      coopType: selectedReq.coopType,
-      remuneration: selectedReq.remuneration || "依約定",
+      coopType: req.coopType,
+      remuneration: req.remuneration || "依約定",
       bankInfo: {
         bankCode: "822",
         bankName: "中國信託",
         accountNumber: "1234-5678-9012",
         accountName: "陳羽晴",
       },
-      outfits: [
-        { id: `o_${Date.now()}`, title: "自備約定風格服裝", description: selectedReq.style, status: "confirmed" },
-      ],
+      outfits: [{ id: `o_${Date.now()}`, title: "自備約定風格服裝", description: req.style, status: "confirmed" }],
       checkInStatus: { modelCheckedIn: false, photographerCheckedIn: false },
       paymentStatus: "unpaid",
-      messages: [
-        { id: `m_${Date.now()}`, sender: "model", senderName: "羽晴 (Hane)", text: replyMessage, timestamp: "剛剛" },
-      ],
+      messages: [{ id: `m_${Date.now()}`, sender: "model", senderName: "羽晴 (Hane)", text: replyMessage, timestamp: "剛剛" }],
     };
     setCollaborations((prev) => [newCollab, ...prev]);
-
-    setActionType(null);
-    setSelectedReq(null);
-    alert(`🎉 已正式同意【${selectedReq.photographerName}】的約拍！\n合約電子存證已確立，專案已同步加入「🤝 合作協作室」！`);
+    alert(`🎉 已正式同意【${req.photographerName}】的約拍！專案已同步加入「🤝 合作協作室」！`);
   };
 
-  const confirmDecline = () => {
-    if (!selectedReq) return;
+  const handleDeclineBooking = (reqId: string, reason: string) => {
     setBookingRequests((prev) =>
-      prev.map((r) =>
-        r.id === selectedReq.id ? { ...r, status: "declined" as const } : r
-      )
+      prev.map((r) => (r.id === reqId ? { ...r, status: "declined" as const } : r))
     );
-    setActionType(null);
-    setSelectedReq(null);
-    alert(`已禮貌婉拒該約拍邀請，系統已將訊息發送給攝影師。`);
+    alert("已禮貌婉拒該約拍邀請。");
   };
 
-  const confirmReview = () => {
-    if (!selectedReq) return;
+  const handleSubmitReview = (reqId: string, score: number, content: string) => {
     setBookingRequests((prev) =>
-      prev.map((r) =>
-        r.id === selectedReq.id ? { ...r, hasReviewed: true } : r
-      )
+      prev.map((r) => (r.id === reqId ? { ...r, hasReviewed: true } : r))
     );
-    setActionType(null);
-    setSelectedReq(null);
-    alert(`⭐ 已成功為【${selectedReq.photographerName}】留下同行評價紀錄！`);
+    alert("⭐ 已成功送出同業存證評價！");
   };
 
-  // ==================== 2. 合作專案協作室狀態 ====================
+  const handleCancelSentInvite = (inviteId: string) => {
+    setInvitations((prev) => prev.filter((i) => i.id !== inviteId));
+    alert("已成功撤回該邀約！");
+  };
+
+  // ==================== 2. 合作協作室狀態 ====================
   const [collaborations, setCollaborations] = useState<CollaborationProject[]>([
     {
       id: "collab_1",
@@ -251,17 +203,11 @@ export default function ModelDashboardPage() {
       },
       outfits: [
         { id: "o1", title: "日系膠卷碎花長洋裝", description: "搭配草帽、復古小包", status: "confirmed" },
-        { id: "o2", title: "白色俐落短版襯衫 + 牛仔寬褲", description: "適合街頭走動特寫", status: "confirmed" },
       ],
-      checkInStatus: {
-        modelCheckedIn: true,
-        modelCheckInTime: "13:48",
-        photographerCheckedIn: true,
-      },
+      checkInStatus: { modelCheckedIn: true, modelCheckInTime: "13:48", photographerCheckedIn: true },
       paymentStatus: "unpaid",
       messages: [
-        { id: "m1", sender: "photographer", senderName: "陳攝影 (Alan Chen)", text: "羽晴您好！當天我會自備 35mm 與 50mm 定焦鏡頭，期待合作！", timestamp: "10:15" },
-        { id: "m2", sender: "model", senderName: "羽晴 (Hane)", text: "好的！我會提早 10 分鐘到 5 號水門碰頭～", timestamp: "10:20" },
+        { id: "m1", sender: "photographer", senderName: "陳攝影 (Alan Chen)", text: "羽晴您好！當天我會自備定焦鏡頭，期待合作！", timestamp: "10:15" },
       ],
     },
   ]);
@@ -288,16 +234,9 @@ export default function ModelDashboardPage() {
   };
 
   const handleApproveRequest = (id: string, durationHours: number = 24) => {
-    const updated = rateCardRequests.map((r) => {
-      if (r.id === id) {
-        return {
-          ...r,
-          status: "approved" as const,
-          expiresLabel: `有效 ${durationHours} 小時`,
-        };
-      }
-      return r;
-    });
+    const updated = rateCardRequests.map((r) =>
+      r.id === id ? { ...r, status: "approved" as const, expiresLabel: `有效 ${durationHours} 小時` } : r
+    );
     setRateCardRequests(updated);
     const config = { images: rateCardImages, accessMode: rateCardAccessMode, requests: updated };
     localStorage.setItem("lumina_model_rate_card_config", JSON.stringify(config));
@@ -652,9 +591,12 @@ export default function ModelDashboardPage() {
     return rateCardRequests.filter((r) => r.status === "pending").length;
   }, [rateCardRequests]);
 
-  const pendingBookingsCount = useMemo(() => {
-    return bookingRequests.filter((r) => r.status === "pending").length;
-  }, [bookingRequests]);
+  // 未處理邀約統計（收到的待審核 + 主動發出的待回覆）
+  const totalPendingInvitesCount = useMemo(() => {
+    const pendingReceived = bookingRequests.filter((r) => r.status === "pending").length;
+    const pendingSent = invitations.filter((i) => i.senderRole === "model" && i.status === "pending").length;
+    return pendingReceived + pendingSent;
+  }, [bookingRequests, invitations]);
 
   return (
     <main className="min-h-[calc(100vh-65px)] bg-stone-100/70 dark:bg-stone-950 px-4 py-8 text-stone-800 dark:text-stone-200 transition-colors duration-200">
@@ -664,24 +606,11 @@ export default function ModelDashboardPage() {
           <div>
             <h2 className="text-xl font-bold text-stone-800 dark:text-stone-100">模特個人工作室後台</h2>
             <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-              管理履約協作室、時效報價單、商案合約與排程日曆
+              集中管理邀約進度、履約協作室、時效報價單、商案合約與排程日曆
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-3 w-full md:w-auto">
-            {/* 邀約審核按鈕 */}
-            <button
-              onClick={() => setIsDrawerOpen(true)}
-              className="px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
-            >
-              <span>📥 邀約審核</span>
-              {pendingBookingsCount > 0 && (
-                <span className="w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold">
-                  {pendingBookingsCount}
-                </span>
-              )}
-            </button>
-
             <div className="flex flex-wrap bg-[#edeae3]/80 dark:bg-stone-800 p-1 rounded-xl border border-stone-300 dark:border-stone-700">
               <button
                 onClick={() => setActiveTab("profile")}
@@ -692,6 +621,23 @@ export default function ModelDashboardPage() {
                 }`}
               >
                 📝 封面與簡介
+              </button>
+
+              {/* ★ 整併後的邀約進度按鈕（含未處理項目數量統計） ★ */}
+              <button
+                onClick={() => setActiveTab("invitations")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === "invitations"
+                    ? "bg-white dark:bg-stone-900 text-indigo-700 dark:text-indigo-400 shadow-xs"
+                    : "text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white"
+                }`}
+              >
+                <span>📫 邀約進度</span>
+                {totalPendingInvitesCount > 0 && (
+                  <span className="w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold shadow-2xs animate-pulse">
+                    {totalPendingInvitesCount}
+                  </span>
+                )}
               </button>
 
               <button
@@ -718,7 +664,7 @@ export default function ModelDashboardPage() {
               >
                 <span>💰 商業報價單</span>
                 {pendingRateCardCount > 0 && (
-                  <span className="w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold shadow-2xs animate-pulse">
+                  <span className="w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold shadow-2xs">
                     {pendingRateCardCount}
                   </span>
                 )}
@@ -735,7 +681,6 @@ export default function ModelDashboardPage() {
                 ⚙️ 合約模板
               </button>
 
-              {/* ★ 新增：信用評分管理模組按鈕 ★ */}
               <button
                 onClick={() => setActiveTab("reviews_manager")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -803,6 +748,24 @@ export default function ModelDashboardPage() {
           />
         )}
 
+        {/* ★ 整併後的一站式邀約進度模組 ★ */}
+        {activeTab === "invitations" && (
+          <ModelInvitationTrackerTab
+            currentModelId="hane"
+            currentModelName={modelProfile.name}
+            invitations={invitations}
+            bookingRequests={bookingRequests}
+            onAcceptBooking={handleAcceptBooking}
+            onDeclineBooking={handleDeclineBooking}
+            onSubmitReview={handleSubmitReview}
+            onCancelSentInvite={handleCancelSentInvite}
+            commercialContractBody={commercialContractBody}
+            templateContractBody={templateContractBody}
+            templateAcceptMessage={templateAcceptMessage}
+            templateDeclineMessage={templateDeclineMessage}
+          />
+        )}
+
         {activeTab === "collaboration" && (
           <CollaborationTab
             collaborations={collaborations}
@@ -841,7 +804,6 @@ export default function ModelDashboardPage() {
           />
         )}
 
-        {/* ★ 新增：信用評分管理分頁內容渲染 ★ */}
         {activeTab === "reviews_manager" && (
           <ReviewsManagerTab
             currentUserName={modelProfile.name || "羽晴 (Hane)"}
@@ -893,278 +855,6 @@ export default function ModelDashboardPage() {
           />
         )}
       </div>
-
-      {/* 邀約審核右側滑出抽屜 (Drawer) */}
-      {isDrawerOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end">
-          <div className="w-full max-w-xl bg-[#fbfaf8] dark:bg-stone-900 border-l border-stone-200 dark:border-stone-800 h-full p-6 overflow-y-auto space-y-6 shadow-2xl flex flex-col justify-between">
-            <div className="space-y-5">
-              <div className="flex justify-between items-center border-b border-stone-200 dark:border-stone-800 pb-3">
-                <div>
-                  <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
-                    <span>📥</span>
-                    <span>約拍邀請審核抽屜 ({bookingRequests.length})</span>
-                  </h3>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                    審核攝影師提案、確認履約條款或發表同業評價
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-xl font-bold cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* 邀約卡片列表 */}
-              <div className="space-y-4">
-                {bookingRequests.map((req) => (
-                  <div
-                    key={req.id}
-                    className="p-5 bg-white dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-2xl space-y-3 shadow-xs"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Link
-                            href={`/photographer/${encodeURIComponent(req.photographerName)}`}
-                            className="font-bold text-stone-900 dark:text-stone-100 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm"
-                          >
-                            {req.photographerName} ➔
-                          </Link>
-                          <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                            ★ {req.photographerRating.toFixed(1)} (履約率 {req.completionRate})
-                          </span>
-                        </div>
-                        <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                          📅 {req.date} · ⏰ {req.timeSlot}
-                        </p>
-                      </div>
-
-                      <span
-                        className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                          req.status === "accepted"
-                            ? "bg-emerald-50 text-emerald-800 border border-emerald-300"
-                            : req.status === "declined"
-                            ? "bg-rose-50 text-rose-800 border border-rose-300"
-                            : "bg-amber-50 text-amber-800 border border-amber-300"
-                        }`}
-                      >
-                        {req.status === "accepted" ? "✓ 已同意" : req.status === "declined" ? "✕ 已婉拒" : "⏳ 待審核"}
-                      </span>
-                    </div>
-
-                    <div className="bg-[#f5f3ef] dark:bg-stone-900 p-3 rounded-xl border border-stone-200 dark:border-stone-700 text-xs space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-stone-500 dark:text-stone-400">合作性質：</span>
-                        <strong className="text-stone-800 dark:text-stone-200">{req.coopType} {req.remuneration && `(${req.remuneration})`}</strong>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-stone-500 dark:text-stone-400">約定地點：</span>
-                        <strong className="text-stone-800 dark:text-stone-200">{req.location}</strong>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-stone-500 dark:text-stone-400">風格：</span>
-                        <strong className="text-stone-800 dark:text-stone-200">{req.style}</strong>
-                      </div>
-                      <p className="text-stone-600 dark:text-stone-300 pt-1 border-t border-stone-200 dark:border-stone-800 text-[11px] leading-relaxed">
-                        提案信：{req.notes}
-                      </p>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-1">
-                      {req.status === "pending" && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => openAcceptModal(req)}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
-                          >
-                            ✓ 同意約拍 (簽署存證合約)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openDeclineModal(req)}
-                            className="px-3.5 py-2 bg-stone-200 dark:bg-stone-700 hover:bg-rose-100 hover:text-rose-700 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-bold transition cursor-pointer"
-                          >
-                            婉拒
-                          </button>
-                        </>
-                      )}
-
-                      {req.status === "accepted" && !req.hasReviewed && (
-                        <button
-                          type="button"
-                          onClick={() => openReviewModal(req)}
-                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
-                        >
-                          ⭐ 填寫同業評價 (存證手札)
-                        </button>
-                      )}
-
-                      {req.status === "accepted" && req.hasReviewed && (
-                        <span className="text-xs text-emerald-600 font-bold py-1.5">
-                          ✓ 已完成同行評價
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-stone-200 dark:border-stone-800 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setIsDrawerOpen(false)}
-                className="px-5 py-2 bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-bold cursor-pointer hover:bg-stone-300"
-              >
-                關閉抽屜
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 同意約拍彈窗 */}
-      {actionType === "accept" && selectedReq && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#fbfaf8] dark:bg-stone-900 border border-stone-200 dark:border-stone-800 max-w-xl w-full p-6 rounded-2xl space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
-              確認同意與【{selectedReq.photographerName}】的約拍協議
-            </h3>
-            <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                存證合約條款 (已自動依【{selectedReq.coopType}】帶入模板)：
-              </label>
-              <textarea
-                rows={8}
-                value={contractText}
-                onChange={(e) => setContractText(e.target.value)}
-                className="w-full text-xs font-mono bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-xl p-3 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                回覆給攝影師的留言 (自動帶入預設)：
-              </label>
-              <textarea
-                rows={3}
-                value={replyMessage}
-                onChange={(e) => setReplyMessage(e.target.value)}
-                className="w-full text-xs bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-xl p-3 outline-none"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setActionType(null)}
-                className="px-4 py-2 bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-bold"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={confirmAccept}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold"
-              >
-                正式簽署並發送同意
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 婉拒約拍彈窗 */}
-      {actionType === "decline" && selectedReq && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#fbfaf8] dark:bg-stone-900 border border-stone-200 dark:border-stone-800 max-w-md w-full p-6 rounded-2xl space-y-4 shadow-2xl">
-            <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
-              婉拒【{selectedReq.photographerName}】的約拍邀請
-            </h3>
-            <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                禮貌婉拒理由：
-              </label>
-              <textarea
-                rows={4}
-                value={declineReason}
-                onChange={(e) => setDeclineReason(e.target.value)}
-                className="w-full text-xs bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-xl p-3 outline-none"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setActionType(null)}
-                className="px-4 py-2 bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-bold"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={confirmDecline}
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold"
-              >
-                確認婉拒
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 填寫同行評價彈窗 */}
-      {actionType === "review" && selectedReq && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#fbfaf8] dark:bg-stone-900 border border-stone-200 dark:border-stone-800 max-w-lg w-full p-6 rounded-2xl space-y-4 shadow-2xl">
-            <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
-              為【{selectedReq.photographerName}】留下同業存證評價
-            </h3>
-            <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                守時與安全評分：{reviewScore} 星
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="5"
-                step="0.5"
-                value={reviewScore}
-                onChange={(e) => setReviewScore(Number(e.target.value))}
-                className="w-full accent-indigo-600"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                詳細評價手札 (給模特同業參考)：
-              </label>
-              <textarea
-                rows={4}
-                value={reviewContent}
-                onChange={(e) => setReviewContent(e.target.value)}
-                className="w-full text-xs bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-xl p-3 outline-none"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setActionType(null)}
-                className="px-4 py-2 bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-bold"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={confirmReview}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold"
-              >
-                送出同業手札評價
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

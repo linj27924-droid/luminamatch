@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import ClientProfileTab, { ClientProfile } from "../../../components/dashboard-client/ClientProfileTab";
 import JobPostingTab from "../../../components/dashboard-client/JobPostingTab";
 import ApplicantReviewTab from "../../../components/dashboard-client/ApplicantReviewTab";
 import ClientCollaborationTab from "../../../components/dashboard-client/ClientCollaborationTab";
+import ClientInvitationTrackerTab from "../../../components/dashboard-client/ClientInvitationTrackerTab";
+import ClientContractTemplateTab, { ClientTemplateConfig } from "../../../components/dashboard-client/ClientContractTemplateTab";
 import { CollaborationProject } from "../../../components/dashboard-photographer/PhotographerCollaborationTab";
 import { JobPosting, JobApplicant } from "../../../types/job";
+import { CollaborationInvite } from "../../../types/invitation";
 
 const DEFAULT_JOBS: JobPosting[] = [
   {
@@ -86,8 +89,27 @@ const DEFAULT_COLLABS: CollaborationProject[] = [
   },
 ];
 
+const DEFAULT_CLIENT_TEMPLATE: ClientTemplateConfig = {
+  contractTitle: "風格品牌商業攝影委託暨肖像授權合約",
+  commercialContractBody: `【第一條：商業委託授權與使用範圍】
+1. 乙方授權甲方將本次拍攝成品用於品牌官方網站、電商賣場、社群廣告等行銷宣傳，授權期間自結案日起算 1 年。
+2. 未經雙方書面同意，甲方不得將照片轉售授權予第三方品牌；乙方個人作品集展示時應標註甲方品牌識別。
+
+【第二條：交件規範與驗收】
+1. 攝影師應於拍攝結束後 14 日內上傳雲端毛片，並提供 15 張高畫質精修成品。
+2. 品牌方享有 2 次免費局部微調修圖權限。
+
+【第三條：款項給付與放鳥違約規範】
+1. 甲方於簽約後 48 小時內給付 30% 定金；拍攝當日完成現場驗收後，於 3 日內結清 70% 尾款。
+2. 任一方無正當天災因素於 48 小時內臨時取消，應賠償對方棚費與通告損失 NT$ 3,000 元整。`,
+  defaultAcceptMessage: "您好！非常高興能與您合作本次拍攝！通告時間、服裝套數與商案存證合約已確立，請確認通告細節，拍攝當天請提早 10 分鐘抵達現場！",
+  defaultDeclineMessage: "感謝您的主動投遞與提案！您的作品風格非常優秀，但由於本期新品風格已有特定人選，本次暫無法配合，期待未來有其他專案時能再次與您合作！",
+  usageRightsSummary: "品牌官方網站、電商商城、社群廣告 1 年使用授權",
+  depositNoticeNote: "合約確立後 48 小時內由品牌方匯出 30% 定金至受託方專案帳戶",
+};
+
 export default function ClientDashboardPage() {
-  const [activeTab, setActiveTab] = useState<"jobs" | "applicants" | "collab" | "profile">("jobs");
+  const [activeTab, setActiveTab] = useState<"jobs" | "applicants" | "invitations" | "templates" | "collab" | "profile">("jobs");
   const [profile, setProfile] = useState<ClientProfile>({
     companyName: "風格服飾品牌 (Flora Studio)",
     taxId: "88776655",
@@ -99,8 +121,44 @@ export default function ClientDashboardPage() {
     invoiceTitle: "風格設計服飾股份有限公司",
   });
 
+  const [templateConfig, setTemplateConfig] = useState<ClientTemplateConfig>(DEFAULT_CLIENT_TEMPLATE);
   const [jobs, setJobs] = useState<JobPosting[]>(DEFAULT_JOBS);
   const [collabEvents, setCollabEvents] = useState<CollaborationProject[]>(DEFAULT_COLLABS);
+
+  const [invitations, setInvitations] = useState<CollaborationInvite[]>([
+    {
+      id: "inv_c1",
+      senderId: "flora_studio",
+      senderName: "風格服飾品牌 (Flora Studio)",
+      senderRole: "client",
+      recipientId: "hane",
+      recipientName: "羽晴 (Hane)",
+      recipientRole: "model",
+      projectTitle: "2026 冬季針織新品型錄 (松山文創)",
+      proposedDate: "2026-10-30",
+      proposedBudget: "NT$ 18,000",
+      message: "羽晴您好！我們看到您的個人型錄非常契合我們的新品風格，誠摯邀請您參與拍攝！",
+      status: "pending",
+      createdAt: "2026-10-16 10:00",
+      updatedAt: "2026-10-16 10:00",
+    },
+    {
+      id: "inv_c2",
+      senderId: "Alan Chen",
+      senderName: "陳攝影 (Alan Chen)",
+      senderRole: "photographer",
+      recipientId: "flora_studio",
+      recipientName: "風格服飾品牌 (Flora Studio)",
+      recipientRole: "client",
+      projectTitle: "品牌冬季 Lookbook 視覺策畫提案",
+      proposedDate: "2026-11-15",
+      proposedBudget: "NT$ 22,000",
+      message: "林總監您好！看過貴品牌的針織新品，我自備微光定焦鏡與大稻埕復古棚景，希望能為貴品牌拍攝專案！",
+      status: "pending",
+      createdAt: "2026-10-17 14:20",
+      updatedAt: "2026-10-17 14:20",
+    },
+  ]);
 
   useEffect(() => {
     try {
@@ -113,6 +171,11 @@ export default function ClientDashboardPage() {
       if (savedCollabs) {
         const parsedCollabs = JSON.parse(savedCollabs);
         if (Array.isArray(parsedCollabs) && parsedCollabs.length > 0) setCollabEvents(parsedCollabs);
+      }
+      const savedTemplates = localStorage.getItem("lumina_client_contract_templates");
+      if (savedTemplates) {
+        const parsedT = JSON.parse(savedTemplates);
+        setTemplateConfig((prev) => ({ ...prev, ...parsedT }));
       }
     } catch (e) {
       console.error(e);
@@ -129,6 +192,11 @@ export default function ClientDashboardPage() {
     localStorage.setItem("lumina_client_collabs", JSON.stringify(updated));
   };
 
+  const handleSaveTemplates = (newConfig: ClientTemplateConfig) => {
+    setTemplateConfig(newConfig);
+    localStorage.setItem("lumina_client_contract_templates", JSON.stringify(newConfig));
+  };
+
   const handleAddJob = (job: JobPosting) => {
     const updated = [job, ...jobs];
     saveJobs(updated);
@@ -140,7 +208,6 @@ export default function ClientDashboardPage() {
     saveJobs(updated);
   };
 
-  // 錄用應徵者並直接開闢協作室
   const handleUpdateApplicantStatus = (jobId: string, applicantId: string, status: "hired" | "declined") => {
     const targetJob = jobs.find((j) => j.id === jobId);
     const targetApplicant = targetJob?.applicants.find((a) => a.id === applicantId);
@@ -191,7 +258,7 @@ export default function ClientDashboardPage() {
             id: `msg_${Date.now()}`,
             sender: "photographer",
             senderName: profile.companyName,
-            text: `您好【${targetApplicant.applicantName}】！我們已正式錄用您參與【${targetJob.title}】，已開闢專屬協作室，歡迎在此確認拍攝細節！`,
+            text: templateConfig.defaultAcceptMessage || `您好【${targetApplicant.applicantName}】！我們已正式錄用您參與【${targetJob.title}】，已開闢專屬協作室，歡迎在此確認拍攝細節！`,
             timestamp: "剛剛",
           },
         ],
@@ -202,6 +269,71 @@ export default function ClientDashboardPage() {
       setActiveTab("collab");
       alert(`🎉 錄用成功！已自動為您與【${targetApplicant.applicantName}】開闢商案專屬協作室！`);
     }
+  };
+
+  const handleAcceptInvite = (invite: CollaborationInvite) => {
+    setInvitations((prev) =>
+      prev.map((i) => (i.id === invite.id ? { ...i, status: "accepted" as const } : i))
+    );
+
+    const newCollab: CollaborationProject = {
+      id: `collab_${Date.now()}`,
+      caseNumber: `COM-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(100 + Math.random() * 900)}`,
+      title: invite.projectTitle,
+      category: "commercial",
+      modelName: invite.senderName,
+      shootDate: invite.proposedDate,
+      exactTime: `${invite.proposedDate} 準時集合`,
+      exactLocation: "品牌指定場地或攝影棚",
+      coopType: "商業品牌發案",
+      remuneration: invite.proposedBudget,
+      deliveryDays: 14,
+      bankInfo: {
+        bankCode: "822",
+        bankName: "中國信託",
+        accountNumber: "待創作者提供匯款帳號",
+        accountName: invite.senderName,
+      },
+      outfits: [
+        {
+          id: `outfit_${Date.now()}`,
+          title: "品牌方自備服裝與產品樣品",
+          description: invite.message,
+          modelConfirmed: true,
+          photographerConfirmed: true,
+          status: "confirmed",
+        },
+      ],
+      checkInStatus: { modelCheckedIn: false, photographerCheckedIn: false },
+      paymentStatus: "unpaid",
+      status: "confirmed",
+      messages: [
+        {
+          id: `msg_${Date.now()}`,
+          sender: "photographer",
+          senderName: profile.companyName,
+          text: templateConfig.defaultAcceptMessage || `您好【${invite.senderName}】！我們非常欣賞您的提案，專案協作室已正式開闢，歡迎確認通告與需求細節！`,
+          timestamp: "剛剛",
+        },
+      ],
+    };
+
+    const updatedCollabs = [newCollab, ...collabEvents];
+    saveCollabs(updatedCollabs);
+    setActiveTab("collab");
+    alert(`🎉 已正式接受【${invite.senderName}】的專案提案！專案已同步建立至「履約協作室」！`);
+  };
+
+  const handleDeclineInvite = (inviteId: string) => {
+    setInvitations((prev) =>
+      prev.map((i) => (i.id === inviteId ? { ...i, status: "declined" as const } : i))
+    );
+    alert(`已婉拒該提案。已自動附上禮貌留言：「${templateConfig.defaultDeclineMessage}」`);
+  };
+
+  const handleCancelSentInvite = (inviteId: string) => {
+    setInvitations((prev) => prev.filter((i) => i.id !== inviteId));
+    alert("已成功撤回該定向邀約！");
   };
 
   const handleSendMessage = (eventId: string, text: string) => {
@@ -257,6 +389,12 @@ export default function ClientDashboardPage() {
 
   const totalApplicantsCount = jobs.reduce((sum, j) => sum + j.applicants.length, 0);
 
+  const totalPendingInvitesCount = useMemo(() => {
+    const pendingSent = invitations.filter((i) => i.senderRole === "client" && i.status === "pending").length;
+    const pendingReceived = invitations.filter((i) => i.recipientRole === "client" && i.status === "pending").length;
+    return pendingSent + pendingReceived;
+  }, [invitations]);
+
   return (
     <main className="min-h-[calc(100vh-65px)] bg-stone-100/70 px-4 py-8">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -264,10 +402,10 @@ export default function ClientDashboardPage() {
         <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-xl font-bold text-stone-800">企業品牌發案後台</h2>
-            <p className="text-xs text-stone-500 mt-0.5">管理商案招募、審核投遞、履約即時對話與定金存證</p>
+            <p className="text-xs text-stone-500 mt-0.5">管理商案招募、定向合作邀約、合約範本、履約協作對話與定金存證</p>
           </div>
 
-          <div className="flex bg-[#edeae3]/80 p-1 rounded-xl border border-stone-300">
+          <div className="flex flex-wrap bg-[#edeae3]/80 p-1 rounded-xl border border-stone-300">
             <button
               onClick={() => setActiveTab("jobs")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -276,6 +414,7 @@ export default function ClientDashboardPage() {
             >
               📢 刊登管理 ({jobs.length})
             </button>
+
             <button
               onClick={() => setActiveTab("applicants")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
@@ -289,6 +428,31 @@ export default function ClientDashboardPage() {
                 </span>
               )}
             </button>
+
+            <button
+              onClick={() => setActiveTab("invitations")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "invitations" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <span>📫 邀約進度</span>
+              {totalPendingInvitesCount > 0 && (
+                <span className="w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold shadow-2xs animate-pulse">
+                  {totalPendingInvitesCount}
+                </span>
+              )}
+            </button>
+
+            {/* ★ 新增：品牌合約範本分頁按鈕 ★ */}
+            <button
+              onClick={() => setActiveTab("templates")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                activeTab === "templates" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              📜 合約範本
+            </button>
+
             <button
               onClick={() => setActiveTab("collab")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
@@ -298,6 +462,7 @@ export default function ClientDashboardPage() {
               <span>🤝 履約協作室</span>
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
             </button>
+
             <button
               onClick={() => setActiveTab("profile")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -312,6 +477,22 @@ export default function ClientDashboardPage() {
         {/* 模組分流渲染 */}
         {activeTab === "jobs" && <JobPostingTab jobs={jobs} onAddJob={handleAddJob} onDeleteJob={handleDeleteJob} />}
         {activeTab === "applicants" && <ApplicantReviewTab jobs={jobs} onUpdateApplicantStatus={handleUpdateApplicantStatus} />}
+        {activeTab === "invitations" && (
+          <ClientInvitationTrackerTab
+            clientCompanyName={profile.companyName}
+            invitations={invitations}
+            onAcceptInvite={handleAcceptInvite}
+            onDeclineInvite={handleDeclineInvite}
+            onCancelSentInvite={handleCancelSentInvite}
+          />
+        )}
+        {/* ★ 渲染合約與快速回覆範本模組 ★ */}
+        {activeTab === "templates" && (
+          <ClientContractTemplateTab
+            config={templateConfig}
+            onSave={handleSaveTemplates}
+          />
+        )}
         {activeTab === "collab" && (
           <ClientCollaborationTab
             events={collabEvents}
