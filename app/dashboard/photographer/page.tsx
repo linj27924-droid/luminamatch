@@ -3,13 +3,14 @@
 import React, { useState, useEffect, useMemo } from "react";
 import PhotographerProfileTab, { PhotographerSocialLinks } from "../../../components/dashboard-photographer/PhotographerProfileTab";
 import ProposalTemplateTab from "../../../components/dashboard-photographer/ProposalTemplateTab";
-import PhotographerReviewsTab, { PhotographerReceivedReview } from "../../../components/dashboard-photographer/PhotographerReviewsTab";
 import PhotographerRateCardTab, { RateCardRequestItem, ModelRateCardResponseItem } from "../../../components/dashboard-photographer/PhotographerRateCardTab";
 import CommercialContractTab, { DEFAULT_COMMERCIAL_CONTRACT } from "../../../components/dashboard-photographer/CommercialContractTab";
 import PhotographerCollaborationTab, { CollaborationProject } from "../../../components/dashboard-photographer/PhotographerCollaborationTab";
 import PhotographerScheduleTab from "../../../components/dashboard-photographer/PhotographerScheduleTab";
 import ReviewsManagerTab from "../../../components/reviews/ReviewsManagerTab";
 import PhotographerInvitationTrackerTab from "../../../components/dashboard-photographer/PhotographerInvitationTrackerTab";
+import IndustryWatchlistTab from "../../../components/reviews/IndustryWatchlistTab";
+import PhotographerBlacklistTab from "../../../components/dashboard-photographer/PhotographerBlacklistTab";
 import { CollaborationInvite } from "../../../types/invitation";
 
 const DEFAULT_PROJECTS: CollaborationProject[] = [
@@ -64,13 +65,6 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
         senderName: "羽晴 (Hane)",
         text: "陳攝影您好！已上傳這次挑選的旗袍參考照，再麻煩您確認光線與色調是否合適！",
         timestamp: "14:20",
-      },
-      {
-        id: "m_2",
-        sender: "photographer",
-        senderName: "陳攝影 (Alan Chen)",
-        text: "看過照片了，暗紅絲絨質感非常符合當天迪化街老街景，當天我會自備暖色柔光罩！",
-        timestamp: "14:35",
       },
     ],
   },
@@ -163,7 +157,16 @@ const DEFAULT_PROJECTS: CollaborationProject[] = [
 
 export default function PhotographerDashboardPage() {
   const [activeTab, setActiveTab] = useState<
-    "profile" | "invitations" | "rate_card" | "collab" | "schedule" | "contract" | "template" | "reviews_manager" | "reviews"
+    | "profile"
+    | "invitations"
+    | "rate_card"
+    | "collab"
+    | "schedule"
+    | "contract"
+    | "template"
+    | "reviews_manager"
+    | "watchlist"
+    | "blacklist"
   >("profile");
 
   const [photographerProfile, setPhotographerProfile] = useState({
@@ -212,14 +215,6 @@ export default function PhotographerDashboardPage() {
       requestTime: "2026-10-14 16:30",
       status: "pending",
     },
-    {
-      id: "req_c1",
-      applicantName: "風格服飾品牌 (Flora Studio)",
-      applicantRole: "client",
-      requestTime: "2026-10-12 11:20",
-      status: "approved",
-      expiresLabel: "有效至 11/12",
-    },
   ]);
 
   const [outgoingRequests, setOutgoingRequests] = useState<ModelRateCardResponseItem[]>([
@@ -231,16 +226,8 @@ export default function PhotographerDashboardPage() {
       status: "approved",
       expiresLabel: "剩餘 6 天",
     },
-    {
-      id: "out_2",
-      modelId: "mina",
-      modelName: "米娜 (Mina)",
-      requestTime: "2026-10-14 09:15",
-      status: "pending",
-    },
   ]);
 
-  // ==================== ★ 新增：邀約進度資料 ★ ====================
   const [invitations, setInvitations] = useState<CollaborationInvite[]>([
     {
       id: "inv_p1",
@@ -257,22 +244,6 @@ export default function PhotographerDashboardPage() {
       status: "pending",
       createdAt: "2026-10-16 11:00",
       updatedAt: "2026-10-16 11:00",
-    },
-    {
-      id: "inv_p2",
-      senderId: "flora_studio",
-      senderName: "風格服飾品牌 (Flora Studio)",
-      senderRole: "client",
-      recipientId: "Alan Chen",
-      recipientName: "陳攝影 (Alan Chen)",
-      recipientRole: "photographer",
-      projectTitle: "電商新品白底商品棚拍",
-      proposedDate: "2026-11-12",
-      proposedBudget: "NT$ 12,000",
-      message: "陳攝影您好，我們有批冬季飾品需要純白底去背與特寫拍攝，希望能與您配合！",
-      status: "pending",
-      createdAt: "2026-10-17 09:30",
-      updatedAt: "2026-10-17 09:30",
     },
   ]);
 
@@ -358,19 +329,8 @@ export default function PhotographerDashboardPage() {
     defaultStyle: "日系膠卷清新街拍",
     defaultLocation: "台北市大稻埕 / 迪化街周邊街拍",
     defaultCoopType: "互惠創作 (TFCD)",
-    defaultProposalLetter: "您好！非常欣賞您的作品風格與表現力，希望能邀約合作一組日系膠卷人像！拍攝當天會自備反光板與定焦鏡頭，預計於拍攝後 14 日內交付 15 張高畫質精修調色成品，全程無任何肢體碰觸要求，期待您的回覆！",
+    defaultProposalLetter: "您好！非常欣賞您的作品風格與表現力，希望能邀約合作！全程無任何肢體碰觸要求，期待您的回覆！",
   });
-
-  const [reviews, setReviews] = useState<PhotographerReceivedReview[]>([
-    {
-      id: "pr_p_1",
-      authorName: "模特 羽晴 (Hane)（已官方驗證）",
-      date: "2026-10-01",
-      tags: ["安全尊重", "守時不拖拉", "依約交圖"],
-      content: "合作過程非常舒服！完全透過口頭動作走位引導，現場有女性助理協助整理髮絲，交圖迅速且色調非常棒！",
-      safetyRating: 5.0,
-    },
-  ]);
 
   const reloadCollabEvents = () => {
     const savedCollabs = localStorage.getItem("lumina_collaboration_events");
@@ -708,7 +668,6 @@ export default function PhotographerDashboardPage() {
 
   const pendingIncomingCount = incomingRequests.filter((r) => r.status === "pending").length;
 
-  // 未處理邀約統計（我發出的待回覆 + 收到的待處理）
   const totalPendingInvitesCount = useMemo(() => {
     const pendingSent = invitations.filter((i) => i.senderRole === "photographer" && i.status === "pending").length;
     const pendingReceived = invitations.filter((i) => i.recipientRole === "photographer" && i.status === "pending").length;
@@ -722,7 +681,7 @@ export default function PhotographerDashboardPage() {
           <div>
             <h2 className="text-xl font-bold text-stone-800">攝影工作室後台</h2>
             <p className="text-xs text-stone-500 mt-1">
-              管理合作提案進度、履約協作、檔期日曆與商案合約
+              管理合作提案進度、履約協作、信用評分、同業防雷手札與黑名單防護
             </p>
           </div>
 
@@ -736,7 +695,6 @@ export default function PhotographerDashboardPage() {
               📷 攝影師檔案
             </button>
 
-            {/* ★ 新增：邀約進度按鈕（含未處理項目數量統計） ★ */}
             <button
               onClick={() => setActiveTab("invitations")}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
@@ -802,6 +760,7 @@ export default function PhotographerDashboardPage() {
               📝 預設提案範本
             </button>
 
+            {/* ★ 攝影端保留：⭐ 信用評分管理 ★ */}
             <button
               onClick={() => setActiveTab("reviews_manager")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -811,13 +770,24 @@ export default function PhotographerDashboardPage() {
               ⭐ 信用評分管理
             </button>
 
+            {/* ★ 攝影端：🛡️ 同業防雷手札 ★ */}
             <button
-              onClick={() => setActiveTab("reviews")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                activeTab === "reviews" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
+              onClick={() => setActiveTab("watchlist")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                activeTab === "watchlist" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              🛡️ 模特評價手札
+              <span>🛡️ 同業防雷手札</span>
+            </button>
+
+            {/* ★ 攝影端：🚫 隱形黑名單 ★ */}
+            <button
+              onClick={() => setActiveTab("blacklist")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                activeTab === "blacklist" ? "bg-white text-rose-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              🚫 隱形黑名單
             </button>
           </div>
         </div>
@@ -837,7 +807,6 @@ export default function PhotographerDashboardPage() {
           />
         )}
 
-        {/* ★ 新增：攝影端邀約進度看板渲染 ★ */}
         {activeTab === "invitations" && (
           <PhotographerInvitationTrackerTab
             currentPhotographerName={photographerProfile.name}
@@ -909,6 +878,7 @@ export default function PhotographerDashboardPage() {
           />
         )}
 
+        {/* 渲染信用評分管理 */}
         {activeTab === "reviews_manager" && (
           <ReviewsManagerTab
             currentUserName={photographerProfile.name}
@@ -916,9 +886,16 @@ export default function PhotographerDashboardPage() {
           />
         )}
 
-        {activeTab === "reviews" && (
-          <PhotographerReviewsTab reviews={reviews} />
+        {/* 渲染同業防雷手札 */}
+        {activeTab === "watchlist" && (
+          <IndustryWatchlistTab
+            currentUserRole="photographer"
+            currentUserName={photographerProfile.name}
+          />
         )}
+
+        {/* 渲染隱形黑名單 */}
+        {activeTab === "blacklist" && <PhotographerBlacklistTab />}
       </div>
     </main>
   );

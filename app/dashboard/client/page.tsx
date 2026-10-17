@@ -7,6 +7,9 @@ import ApplicantReviewTab from "../../../components/dashboard-client/ApplicantRe
 import ClientCollaborationTab from "../../../components/dashboard-client/ClientCollaborationTab";
 import ClientInvitationTrackerTab from "../../../components/dashboard-client/ClientInvitationTrackerTab";
 import ClientContractTemplateTab, { ClientTemplateConfig } from "../../../components/dashboard-client/ClientContractTemplateTab";
+import ClientReviewsTab from "../../../components/dashboard-client/ClientReviewsTab";
+import IndustryWatchlistTab from "../../../components/reviews/IndustryWatchlistTab";
+import ClientBlacklistTab from "../../../components/dashboard-client/ClientBlacklistTab";
 import { CollaborationProject } from "../../../components/dashboard-photographer/PhotographerCollaborationTab";
 import { JobPosting, JobApplicant } from "../../../types/job";
 import { CollaborationInvite } from "../../../types/invitation";
@@ -109,7 +112,10 @@ const DEFAULT_CLIENT_TEMPLATE: ClientTemplateConfig = {
 };
 
 export default function ClientDashboardPage() {
-  const [activeTab, setActiveTab] = useState<"jobs" | "applicants" | "invitations" | "templates" | "collab" | "profile">("jobs");
+  const [activeTab, setActiveTab] = useState<
+    "jobs" | "applicants" | "invitations" | "templates" | "reviews" | "watchlist" | "blacklist" | "collab" | "profile"
+  >("jobs");
+
   const [profile, setProfile] = useState<ClientProfile>({
     companyName: "風格服飾品牌 (Flora Studio)",
     taxId: "88776655",
@@ -141,22 +147,6 @@ export default function ClientDashboardPage() {
       status: "pending",
       createdAt: "2026-10-16 10:00",
       updatedAt: "2026-10-16 10:00",
-    },
-    {
-      id: "inv_c2",
-      senderId: "Alan Chen",
-      senderName: "陳攝影 (Alan Chen)",
-      senderRole: "photographer",
-      recipientId: "flora_studio",
-      recipientName: "風格服飾品牌 (Flora Studio)",
-      recipientRole: "client",
-      projectTitle: "品牌冬季 Lookbook 視覺策畫提案",
-      proposedDate: "2026-11-15",
-      proposedBudget: "NT$ 22,000",
-      message: "林總監您好！看過貴品牌的針織新品，我自備微光定焦鏡與大稻埕復古棚景，希望能為貴品牌拍攝專案！",
-      status: "pending",
-      createdAt: "2026-10-17 14:20",
-      updatedAt: "2026-10-17 14:20",
     },
   ]);
 
@@ -398,11 +388,10 @@ export default function ClientDashboardPage() {
   return (
     <main className="min-h-[calc(100vh-65px)] bg-stone-100/70 px-4 py-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* 頂部控制面板 */}
         <div className="bg-[#fbfaf8] border border-stone-200/90 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-xl font-bold text-stone-800">企業品牌發案後台</h2>
-            <p className="text-xs text-stone-500 mt-0.5">管理商案招募、定向合作邀約、合約範本、履約協作對話與定金存證</p>
+            <p className="text-xs text-stone-500 mt-0.5">管理商案招募、合約範本、品牌聲譽、同業防雷手札與黑名單防護</p>
           </div>
 
           <div className="flex flex-wrap bg-[#edeae3]/80 p-1 rounded-xl border border-stone-300">
@@ -443,7 +432,6 @@ export default function ClientDashboardPage() {
               )}
             </button>
 
-            {/* ★ 新增：品牌合約範本分頁按鈕 ★ */}
             <button
               onClick={() => setActiveTab("templates")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -451,6 +439,36 @@ export default function ClientDashboardPage() {
               }`}
             >
               📜 合約範本
+            </button>
+
+            {/* 品牌聲譽手札 */}
+            <button
+              onClick={() => setActiveTab("reviews")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "reviews" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <span>⭐ 品牌聲譽手札</span>
+            </button>
+
+            {/* ★ 品牌端：🛡️ 同業防雷手札 ★ */}
+            <button
+              onClick={() => setActiveTab("watchlist")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "watchlist" ? "bg-white text-indigo-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <span>🛡️ 同業防雷手札</span>
+            </button>
+
+            {/* 品牌端：🚫 隱形黑名單 */}
+            <button
+              onClick={() => setActiveTab("blacklist")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                activeTab === "blacklist" ? "bg-white text-rose-700 shadow-xs" : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              🚫 隱形黑名單
             </button>
 
             <button
@@ -474,7 +492,6 @@ export default function ClientDashboardPage() {
           </div>
         </div>
 
-        {/* 模組分流渲染 */}
         {activeTab === "jobs" && <JobPostingTab jobs={jobs} onAddJob={handleAddJob} onDeleteJob={handleDeleteJob} />}
         {activeTab === "applicants" && <ApplicantReviewTab jobs={jobs} onUpdateApplicantStatus={handleUpdateApplicantStatus} />}
         {activeTab === "invitations" && (
@@ -486,13 +503,24 @@ export default function ClientDashboardPage() {
             onCancelSentInvite={handleCancelSentInvite}
           />
         )}
-        {/* ★ 渲染合約與快速回覆範本模組 ★ */}
         {activeTab === "templates" && (
           <ClientContractTemplateTab
             config={templateConfig}
             onSave={handleSaveTemplates}
           />
         )}
+        {activeTab === "reviews" && (
+          <ClientReviewsTab companyName={profile.companyName} />
+        )}
+        {/* 渲染同業防雷手札 */}
+        {activeTab === "watchlist" && (
+          <IndustryWatchlistTab
+            currentUserRole="client"
+            currentUserName={profile.companyName}
+          />
+        )}
+        {activeTab === "blacklist" && <ClientBlacklistTab />}
+
         {activeTab === "collab" && (
           <ClientCollaborationTab
             events={collabEvents}

@@ -9,6 +9,7 @@ import RateCardTab, { RateCardRequest } from "../../../components/dashboard-mode
 import CollaborationTab, { CollaborationProject } from "../../../components/dashboard-model/CollaborationTab";
 import ReviewsManagerTab from "../../../components/reviews/ReviewsManagerTab";
 import ModelInvitationTrackerTab, { BookingRequestItem } from "../../../components/dashboard-model/ModelInvitationTrackerTab";
+import IndustryWatchlistTab from "../../../components/reviews/IndustryWatchlistTab";
 import { CollaborationInvite } from "../../../types/invitation";
 
 export default function ModelDashboardPage() {
@@ -19,11 +20,11 @@ export default function ModelDashboardPage() {
     | "rate_card"
     | "contract_templates"
     | "reviews_manager"
+    | "watchlist"
     | "schedule"
     | "blacklist"
   >("profile");
 
-  // ==================== 0. 合約模板與商案定金狀態 ====================
   const [depositPolicy, setDepositPolicy] = useState("商案需預付 30% 定金保留檔期，拍攝結束當日結清尾款。");
   const [templateAcceptMessage, setTemplateAcceptMessage] = useState(
     "非常高興能與您合作！拍攝當天我會提早 10 分鐘抵達現場並自備好基礎底妝，請雙方共同遵守上述存證合約約定！"
@@ -67,7 +68,6 @@ export default function ModelDashboardPage() {
     alert("✅ 商業合約、定金意向與常規模板已成功儲存！");
   };
 
-  // ==================== 1. 約拍邀請與主動邀約資料 ====================
   const [bookingRequests, setBookingRequests] = useState<BookingRequestItem[]>([
     {
       id: "REQ-20261028-01",
@@ -83,21 +83,6 @@ export default function ModelDashboardPage() {
       coopType: "商業有酬",
       remuneration: "NT$ 4,500",
       notes: "已自備反光板與定焦鏡頭，預計交稿 15 張精修調色，無肢體接觸要求。",
-      status: "pending",
-    },
-    {
-      id: "REQ-20261105-02",
-      photographerName: "林光影視覺 (Ray Studio)",
-      photographerRating: 5.0,
-      photographerHistoryCount: 42,
-      completionRate: "100%",
-      noShowCount: 0,
-      date: "2026-11-05",
-      timeSlot: "10:00 - 13:00 (3小時)",
-      location: "松山文創園區戶外",
-      style: "韓系俐落型錄",
-      coopType: "互惠創作 (TFCD)",
-      notes: "希望合作一組秋季俐落風格形象照，棚費自負。",
       status: "pending",
     },
   ]);
@@ -121,7 +106,6 @@ export default function ModelDashboardPage() {
     },
   ]);
 
-  // 同意約拍邀請
   const handleAcceptBooking = (req: BookingRequestItem, contractText: string, replyMessage: string) => {
     setBookingRequests((prev) =>
       prev.map((r) =>
@@ -181,7 +165,6 @@ export default function ModelDashboardPage() {
     alert("已成功撤回該邀約！");
   };
 
-  // ==================== 2. 合作協作室狀態 ====================
   const [collaborations, setCollaborations] = useState<CollaborationProject[]>([
     {
       id: "collab_1",
@@ -212,7 +195,6 @@ export default function ModelDashboardPage() {
     },
   ]);
 
-  // ==================== 3. 報價單模組狀態 ====================
   const [rateCardImages, setRateCardImages] = useState<string[]>([
     "https://images.unsplash.com/photo-1554415707-9e4466bfe03b?auto=format&fit=crop&w=800&q=80",
   ]);
@@ -259,7 +241,6 @@ export default function ModelDashboardPage() {
     localStorage.setItem("lumina_model_rate_card_config", JSON.stringify(config));
   };
 
-  // ==================== 4. 隱形黑名單狀態 ====================
   const [blacklist, setBlacklist] = useState<BlacklistedItem[]>([
     {
       id: "bl_m1",
@@ -294,7 +275,6 @@ export default function ModelDashboardPage() {
     localStorage.setItem("lumina_model_blacklist", JSON.stringify(updated));
   };
 
-  // ==================== 5. 封面與簡介狀態 ====================
   const [coverPhoto, setCoverPhoto] = useState<string>(
     "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80"
   );
@@ -343,7 +323,6 @@ export default function ModelDashboardPage() {
   const [boundaries, setBoundaries] = useState(["不接私房微醺", "謝絕比基尼泳裝", "禁未經同意肢體接觸"]);
   const [newBoundaryInput, setNewBoundaryInput] = useState("");
 
-  // ==================== 6. 排程日曆與定時開放 ====================
   const [customStatusList, setCustomStatusList] = useState<CustomScheduleStatus[]>([
     { id: "available", name: "開放預約", color: "emerald", bgColor: "bg-emerald-50", borderColor: "border-emerald-300", textColor: "text-emerald-800", isBookable: true },
     { id: "off", name: "休假休息", color: "rose", bgColor: "bg-rose-50", borderColor: "border-rose-300", textColor: "text-rose-800", isBookable: false },
@@ -591,7 +570,6 @@ export default function ModelDashboardPage() {
     return rateCardRequests.filter((r) => r.status === "pending").length;
   }, [rateCardRequests]);
 
-  // 未處理邀約統計（收到的待審核 + 主動發出的待回覆）
   const totalPendingInvitesCount = useMemo(() => {
     const pendingReceived = bookingRequests.filter((r) => r.status === "pending").length;
     const pendingSent = invitations.filter((i) => i.senderRole === "model" && i.status === "pending").length;
@@ -601,12 +579,11 @@ export default function ModelDashboardPage() {
   return (
     <main className="min-h-[calc(100vh-65px)] bg-stone-100/70 dark:bg-stone-950 px-4 py-8 text-stone-800 dark:text-stone-200 transition-colors duration-200">
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* 後台標頭與右側分頁按鈕 */}
         <div className="bg-[#fbfaf8] dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-xl font-bold text-stone-800 dark:text-stone-100">模特個人工作室後台</h2>
             <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-              集中管理邀約進度、履約協作室、時效報價單、商案合約與排程日曆
+              集中管理邀約進度、履約協作室、時效報價單、信用評分與同業防雷手札
             </p>
           </div>
 
@@ -623,7 +600,6 @@ export default function ModelDashboardPage() {
                 📝 封面與簡介
               </button>
 
-              {/* ★ 整併後的邀約進度按鈕（含未處理項目數量統計） ★ */}
               <button
                 onClick={() => setActiveTab("invitations")}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
@@ -692,6 +668,18 @@ export default function ModelDashboardPage() {
                 ⭐ 信用評分管理
               </button>
 
+              {/* ★ 模特端：同業防雷手札 ★ */}
+              <button
+                onClick={() => setActiveTab("watchlist")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                  activeTab === "watchlist"
+                    ? "bg-white dark:bg-stone-900 text-indigo-700 dark:text-indigo-400 shadow-xs"
+                    : "text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white"
+                }`}
+              >
+                <span>🛡️ 同業防雷手札</span>
+              </button>
+
               <button
                 onClick={() => setActiveTab("schedule")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -717,7 +705,6 @@ export default function ModelDashboardPage() {
           </div>
         </div>
 
-        {/* 各分頁零件渲染 */}
         {activeTab === "profile" && (
           <ProfileTab
             coverPhoto={coverPhoto}
@@ -748,7 +735,6 @@ export default function ModelDashboardPage() {
           />
         )}
 
-        {/* ★ 整併後的一站式邀約進度模組 ★ */}
         {activeTab === "invitations" && (
           <ModelInvitationTrackerTab
             currentModelId="hane"
@@ -808,6 +794,14 @@ export default function ModelDashboardPage() {
           <ReviewsManagerTab
             currentUserName={modelProfile.name || "羽晴 (Hane)"}
             currentUserRole="model"
+          />
+        )}
+
+        {/* ★ 渲染同業防雷手札 ★ */}
+        {activeTab === "watchlist" && (
+          <IndustryWatchlistTab
+            currentUserRole="model"
+            currentUserName={modelProfile.name}
           />
         )}
 
